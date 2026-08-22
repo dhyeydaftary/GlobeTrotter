@@ -38,7 +38,7 @@ async function listTrips(req, res, next) {
     const trips = await Trip.findAll({
       where: { userId: req.userId },
       include: [{ model: TripStop, as: 'stops', attributes: ['id'] }],
-      order: [['createdAt', 'DESC']],
+      order: [['created_at', 'DESC']],
     });
     const shaped = trips.map((t) => ({
       id: t.id,
