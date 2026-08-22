@@ -1,14 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, MapPin, Trash2, Check } from 'lucide-react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { get, patch, del } from '../api/client';
 import { MOCK_USER, MOCK_CITIES } from '../api/mocks';
 import ErrorBanner from '../components/ErrorBanner';
+import {
+  springSettle, staggerContainer, fadeUpItem, getMotionProps,
+} from '../lib/motion';
 
 const ProfilePage = () => {
   const { user, setUser, logout } = useAuth();
   const navigate = useNavigate();
+  const reduceMotion = useReducedMotion();
+  const mountProps = getMotionProps(reduceMotion, 'mount');
+  const tapProps = reduceMotion ? {} : { whileTap: { scale: 0.97 }, transition: springSettle };
 
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -117,22 +124,31 @@ const ProfilePage = () => {
           <Sparkles className="w-3.5 h-3.5" />
           <span>Account Settings</span>
         </div>
-        <h1 className="text-display-md text-2xl sm:text-3xl font-extrabold text-text-main">
+        <h1 className="text-display-lg text-2xl sm:text-3xl font-extrabold text-text-main">
           Profile & Preferences
         </h1>
       </div>
 
       <ErrorBanner message={error?.message} code={error?.code} onRetry={fetchProfileData} onClose={() => setError(null)} />
 
-      {saveSuccess && (
-        <div className="p-3.5 rounded-card bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-semibold flex items-center gap-2">
-          <Check className="w-4 h-4 text-emerald-600" />
-          <span>Profile changes saved successfully!</span>
-        </div>
-      )}
+      <AnimatePresence>
+        {saveSuccess && (
+          <motion.div
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={reduceMotion ? { duration: 0.15 } : springSettle}
+            className="p-3.5 rounded-card bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-semibold flex items-center gap-2"
+          >
+            <Check className="w-4 h-4 text-emerald-600" />
+            <span>Profile changes saved successfully!</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
+      <motion.div variants={staggerContainer} {...mountProps} className="space-y-6">
       {/* Profile Card */}
-      <div className="gt-card p-6 sm:p-8">
+      <motion.div variants={fadeUpItem} className="gt-card p-6 sm:p-8">
         {/* Avatar & Header */}
         <div className="flex items-center gap-4 sm:gap-5 mb-6 pb-6 border-b border-border-light">
           {photoUrl ? (
@@ -194,19 +210,20 @@ const ProfilePage = () => {
           </div>
 
           <div className="pt-2">
-            <button
+            <motion.button
               type="submit"
               disabled={saving}
-              className="bg-accent hover:bg-accent-hover text-white font-bold px-6 py-3 rounded-btn shadow-btn-accent active:scale-[0.97] transition-all text-xs sm:text-sm disabled:opacity-50"
+              {...tapProps}
+              className="bg-accent hover:bg-accent-hover text-white font-bold px-6 py-3 rounded-btn shadow-btn-accent transition-colors text-xs sm:text-sm disabled:opacity-50"
             >
               {saving ? 'Saving changes...' : 'Save Changes'}
-            </button>
+            </motion.button>
           </div>
         </form>
-      </div>
+      </motion.div>
 
       {/* Saved Destinations */}
-      <div className="gt-card p-6 sm:p-7">
+      <motion.div variants={fadeUpItem} className="gt-card p-6 sm:p-7">
         <h3 className="text-display-md font-bold text-text-main text-base mb-3">Saved Destinations</h3>
         <div className="flex flex-wrap gap-2">
           {savedDestinations.map((dest) => {
@@ -234,57 +251,76 @@ const ProfilePage = () => {
             <p className="text-text-muted text-xs sm:text-sm">No saved destinations yet.</p>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Danger Zone */}
-      <div className="gt-card p-6 border-danger/20 bg-danger/[0.02]">
+      <motion.div variants={fadeUpItem} className="gt-card p-6 border-danger/20 bg-danger/[0.02]">
         <h3 className="text-display-md font-bold text-danger text-base mb-1">Danger Zone</h3>
         <p className="text-text-muted text-xs sm:text-sm mb-4 leading-relaxed">
           Permanently delete your account and all your trips. This action cannot be reversed.
         </p>
-        <button
+        <motion.button
           type="button"
           onClick={() => setShowDeleteModal(true)}
-          className="bg-white text-danger font-bold px-4 py-2.5 rounded-btn border border-danger/30 hover:bg-danger hover:text-white active:scale-[0.97] transition-all text-xs"
+          {...tapProps}
+          className="bg-white text-danger font-bold px-4 py-2.5 rounded-btn border border-danger/30 hover:bg-danger hover:text-white transition-colors text-xs"
         >
           Delete Account
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
+      </motion.div>
 
       {/* Delete Confirm Modal with Frosted Glass Scrim */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-surface-card rounded-card border border-border-light p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-4 animate-scaleIn">
-            <h3 className="text-display-md font-bold text-lg text-text-main">Delete Account</h3>
-            <p className="text-text-muted text-xs sm:text-sm leading-relaxed">
-              Type <strong className="text-text-main font-bold">DELETE</strong> to confirm permanent removal of your account and all itineraries.
-            </p>
-            <input
-              type="text"
-              placeholder="Type DELETE to confirm"
-              onChange={(e) => setDeleteConfirm(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-btn border border-border-light bg-surface text-sm focus:outline-none focus:border-danger focus:ring-2 focus:ring-danger/20"
-            />
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowDeleteModal(false)}
-                className="flex-1 py-2.5 rounded-btn border border-border-light text-text-muted font-semibold text-xs hover:bg-surface-raised hover:text-text-main active:scale-[0.97] transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteAccount}
-                disabled={deleteConfirm !== 'DELETE' || deletingAccount}
-                className="flex-1 py-2.5 rounded-btn bg-danger text-white font-bold text-xs hover:bg-red-600 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {deletingAccount ? 'Deleting...' : 'Delete Forever'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <motion.div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={reduceMotion ? { duration: 0.15 } : springSettle}
+          >
+            <motion.div
+              className="gt-glass-panel rounded-card p-6 sm:p-8 max-w-md w-full space-y-4"
+              style={{ transformOrigin: 'center' }}
+              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
+              transition={reduceMotion ? { duration: 0.15 } : springSettle}
+            >
+              <h3 className="text-display-md font-bold text-lg text-text-main">Delete Account</h3>
+              <p className="text-text-muted text-xs sm:text-sm leading-relaxed">
+                Type <strong className="text-text-main font-bold">DELETE</strong> to confirm permanent removal of your account and all itineraries.
+              </p>
+              <input
+                type="text"
+                placeholder="Type DELETE to confirm"
+                onChange={(e) => setDeleteConfirm(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-btn border border-border-light bg-surface text-sm focus:outline-none focus:border-danger focus:ring-2 focus:ring-danger/20"
+              />
+              <div className="flex gap-3 pt-2">
+                <motion.button
+                  type="button"
+                  onClick={() => setShowDeleteModal(false)}
+                  whileTap={reduceMotion ? {} : { scale: 0.97, transition: springSettle }}
+                  className="flex-1 py-2.5 rounded-btn border border-border-light text-text-muted font-semibold text-xs hover:bg-surface-raised hover:text-text-main transition-colors"
+                >
+                  Cancel
+                </motion.button>
+                <motion.button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={deleteConfirm !== 'DELETE' || deletingAccount}
+                  whileTap={reduceMotion ? {} : { scale: 0.97, transition: springSettle }}
+                  className="flex-1 py-2.5 rounded-btn bg-danger text-white font-bold text-xs hover:bg-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {deletingAccount ? 'Deleting...' : 'Delete Forever'}
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

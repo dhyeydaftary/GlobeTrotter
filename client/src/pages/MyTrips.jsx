@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlusCircle, Sparkles } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
 import { get, del } from '../api/client';
 import { MOCK_TRIPS } from '../api/mocks';
 import TripCard from '../components/TripCard';
 import ErrorBanner from '../components/ErrorBanner';
+import {
+  springSettle, staggerContainer, fadeUpItem, getMotionProps,
+} from '../lib/motion';
 
 const MyTrips = () => {
   const navigate = useNavigate();
@@ -45,6 +49,10 @@ const MyTrips = () => {
     setTrips((prev) => prev.filter((t) => t.id !== tripId));
   };
 
+  const reduceMotion = useReducedMotion();
+  const mountProps = getMotionProps(reduceMotion, 'mount');
+  const tapProps = reduceMotion ? {} : { whileTap: { scale: 0.97 }, transition: springSettle };
+
   return (
     <div className="page-enter max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pt-24 pb-16 space-y-8">
       {/* Header row */}
@@ -54,7 +62,7 @@ const MyTrips = () => {
             <Sparkles className="w-3.5 h-3.5" />
             <span>Trips Overview</span>
           </div>
-          <h1 className="text-display-md text-2xl sm:text-3xl font-extrabold text-text-main">
+          <h1 className="text-display-lg text-2xl sm:text-3xl font-extrabold text-text-main">
             My Trips
           </h1>
           <p className="text-text-muted text-sm mt-1">
@@ -62,13 +70,14 @@ const MyTrips = () => {
           </p>
         </div>
 
-        <button
+        <motion.button
           onClick={() => navigate('/trips/new')}
-          className="inline-flex items-center space-x-2 bg-accent hover:bg-accent-hover text-white font-bold px-5 py-3 rounded-btn shadow-btn-accent active:scale-[0.97] transition-all text-sm self-start sm:self-auto"
+          {...tapProps}
+          className="inline-flex items-center space-x-2 bg-accent hover:bg-accent-hover text-white font-bold px-5 py-3 rounded-btn shadow-btn-accent transition-colors text-sm self-start sm:self-auto"
         >
           <PlusCircle className="w-4 h-4" />
           <span>Plan New Trip</span>
-        </button>
+        </motion.button>
       </div>
 
       <ErrorBanner message={error?.message} code={error?.code} onRetry={fetchTrips} onClose={() => setError(null)} />
@@ -97,19 +106,26 @@ const MyTrips = () => {
           <p className="text-text-muted text-sm mb-6 max-w-sm mx-auto">
             Start planning your first multi-city adventure.
           </p>
-          <button
+          <motion.button
             onClick={() => navigate('/trips/new')}
-            className="bg-accent hover:bg-accent-hover text-white font-bold px-6 py-3 rounded-btn shadow-btn-accent active:scale-[0.97] transition-all text-sm"
+            {...tapProps}
+            className="bg-accent hover:bg-accent-hover text-white font-bold px-6 py-3 rounded-btn shadow-btn-accent transition-colors text-sm"
           >
             Plan New Trip
-          </button>
+          </motion.button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <motion.div
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+          variants={staggerContainer}
+          {...mountProps}
+        >
           {trips.map((trip) => (
-            <TripCard key={trip.id} trip={trip} onDelete={handleDelete} isOwner={true} />
+            <motion.div key={trip.id} variants={fadeUpItem}>
+              <TripCard trip={trip} onDelete={handleDelete} isOwner={true} />
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
     </div>
   );

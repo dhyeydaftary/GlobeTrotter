@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, MapPin, Trash2, Edit3, Eye } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
 import ConfirmDialog from './ConfirmDialog';
 import { TRIP_CARD_FALLBACK } from '../constants/images';
+import { springSettle, springMomentum } from '../lib/motion';
 
 function formatDate(dateStr) {
   if (!dateStr) return '';
@@ -13,6 +15,15 @@ export default function TripCard({ trip, onDelete, isOwner = true }) {
   const [deleting, setDeleting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const navigate = useNavigate();
+  const reduceMotion = useReducedMotion();
+
+  const cardMotionProps = reduceMotion
+    ? {}
+    : {
+        whileHover: { y: -4, transition: springMomentum },
+        whileTap: { scale: 0.98, transition: springSettle },
+      };
+  const actionTapProps = reduceMotion ? {} : { whileTap: { scale: 0.94 }, transition: springSettle };
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -28,9 +39,10 @@ export default function TripCard({ trip, onDelete, isOwner = true }) {
 
   return (
     <>
-      <div
+      <motion.div
         className="gt-card overflow-hidden cursor-pointer group flex flex-col justify-between"
         onClick={() => navigate(`/trips/${trip.id}/view`)}
+        {...cardMotionProps}
       >
         <div>
           {/* Cover Photo */}
@@ -81,36 +93,39 @@ export default function TripCard({ trip, onDelete, isOwner = true }) {
         {/* Footer Actions */}
         <div className="px-5 pb-5 pt-0">
           <div className="border-t border-border-light pt-3.5 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-            <button
+            <motion.button
               onClick={() => navigate(`/trips/${trip.id}/view`)}
-              className="flex items-center gap-1.5 text-xs font-semibold text-text-main px-3 py-1.5 rounded-btn border border-border-light hover:border-accent hover:text-accent hover:bg-accent-light/50 active:scale-[0.97] transition-all"
+              {...actionTapProps}
+              className="flex items-center gap-1.5 text-xs font-semibold text-text-main px-3 py-1.5 rounded-btn border border-border-light hover:border-accent hover:text-accent hover:bg-accent-light/50 transition-colors"
             >
               <Eye className="w-3.5 h-3.5" />
               <span>View</span>
-            </button>
+            </motion.button>
             {isOwner && (
               <>
-                <button
+                <motion.button
                   onClick={() => navigate(`/trips/${trip.id}`)}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-text-muted px-3 py-1.5 rounded-btn border border-border-light hover:border-border-strong hover:text-text-main active:scale-[0.97] transition-all"
+                  {...actionTapProps}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-text-muted px-3 py-1.5 rounded-btn border border-border-light hover:border-border-strong hover:text-text-main transition-colors"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                   <span>Edit</span>
-                </button>
-                <button
+                </motion.button>
+                <motion.button
                   onClick={() => setConfirmOpen(true)}
                   disabled={deleting}
-                  className="ml-auto flex items-center gap-1 text-xs font-semibold text-danger px-2.5 py-1.5 rounded-btn border border-transparent hover:border-danger/20 hover:bg-danger/10 active:scale-[0.97] transition-all disabled:opacity-50"
+                  {...actionTapProps}
+                  className="ml-auto flex items-center gap-1 text-xs font-semibold text-danger px-2.5 py-1.5 rounded-btn border border-transparent hover:border-danger/20 hover:bg-danger/10 transition-colors disabled:opacity-50"
                   title="Delete Trip"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>Delete</span>
-                </button>
+                </motion.button>
               </>
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
 
       <ConfirmDialog
         open={confirmOpen}

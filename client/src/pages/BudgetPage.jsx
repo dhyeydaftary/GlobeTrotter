@@ -3,10 +3,14 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Sparkles, AlertTriangle } from 'lucide-react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js';
 import { Pie, Bar } from 'react-chartjs-2';
+import { motion, useReducedMotion } from 'motion/react';
 import { get } from '../api/client';
 import { MOCK_BUDGET, MOCK_TRIP_DETAIL, withMockFallback } from '../api/mocks';
 import ErrorBanner from '../components/ErrorBanner';
 import EmptyState from '../components/EmptyState';
+import {
+  springSettle, staggerContainer, fadeUpItem, getMotionProps,
+} from '../lib/motion';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title);
 
@@ -19,6 +23,9 @@ const categoryColors = {
 
 const BudgetPage = () => {
   const { id } = useParams();
+  const reduceMotion = useReducedMotion();
+  const mountProps = getMotionProps(reduceMotion, 'mount');
+  const tapProps = reduceMotion ? {} : { whileTap: { scale: 0.97 }, transition: springSettle };
   const [budget, setBudget] = useState(null);
   const [trip, setTrip] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -138,18 +145,20 @@ const BudgetPage = () => {
           title="No scheduled costs yet"
           description="Schedule activities and add stay or transport estimates in your itinerary builder to generate a live budget breakdown."
           action={
-            <Link
-              to={`/trips/${id}`}
-              className="inline-flex bg-accent hover:bg-accent-hover text-white font-bold px-6 py-3 rounded-btn shadow-btn-accent active:scale-[0.97] transition-all text-xs sm:text-sm"
-            >
-              Add Activities
-            </Link>
+            <motion.div className="inline-block" {...tapProps}>
+              <Link
+                to={`/trips/${id}`}
+                className="inline-flex bg-accent hover:bg-accent-hover text-white font-bold px-6 py-3 rounded-btn shadow-btn-accent transition-colors text-xs sm:text-sm"
+              >
+                Add Activities
+              </Link>
+            </motion.div>
           }
         />
       ) : (
-        <>
+        <motion.div variants={staggerContainer} {...mountProps} className="space-y-6">
           {/* Total Header Card */}
-          <div className="gt-card p-8 text-center space-y-2">
+          <motion.div variants={fadeUpItem} className="gt-card p-8 text-center space-y-2">
             <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-accent-light text-accent text-xs font-bold">
               <Sparkles className="w-3.5 h-3.5" />
               <span>Live Expense Tracking</span>
@@ -161,21 +170,21 @@ const BudgetPage = () => {
               <span className="text-accent">₹</span>
               {budget.total?.toLocaleString('en-IN')}
             </p>
-          </div>
+          </motion.div>
 
           {/* Over Budget Alert */}
           {budget.overBudgetDays?.length > 0 && (
-            <div className="flex items-start gap-3 p-4 rounded-card border border-warning/30 bg-warning/10 text-text-main">
+            <motion.div variants={fadeUpItem} className="flex items-start gap-3 p-4 rounded-card border border-warning/30 bg-warning/10 text-text-main">
               <AlertTriangle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
               <div>
                 <p className="font-bold text-text-main text-sm">Over budget on some days</p>
                 <p className="text-text-muted text-xs sm:text-sm mt-0.5">{budget.overBudgetDays.join(', ')}</p>
               </div>
-            </div>
+            </motion.div>
           )}
 
           {/* Charts Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <motion.div variants={fadeUpItem} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Pie Chart */}
             <div className="gt-card p-6">
               <h3 className="text-display-md font-bold text-text-main text-base mb-4">Cost by Category</h3>
@@ -197,14 +206,14 @@ const BudgetPage = () => {
                 />
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Category Breakdown List */}
-          <div className="gt-card p-6 sm:p-7">
+          <motion.div variants={fadeUpItem} className="gt-card p-6 sm:p-7">
             <h3 className="text-display-md font-bold text-text-main text-base mb-4">Detailed Breakdown</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <motion.div className="grid grid-cols-1 sm:grid-cols-2 gap-4" variants={staggerContainer}>
               {Object.entries(budget.byCategory || {}).map(([cat, amount]) => (
-                <div key={cat} className="flex items-center gap-3 p-3.5 rounded-xl bg-surface-raised border border-border-light">
+                <motion.div key={cat} variants={fadeUpItem} className="flex items-center gap-3 p-3.5 rounded-xl bg-surface-raised border border-border-light">
                   <div
                     className="w-3.5 h-3.5 rounded-full flex-shrink-0"
                     style={{ background: categoryColors[cat] || '#5B5BF6' }}
@@ -216,11 +225,11 @@ const BudgetPage = () => {
                   <span className="text-xs sm:text-sm font-bold text-text-main bg-white px-2.5 py-1 rounded-full border border-border-light shadow-sm">
                     {budget.total ? Math.round((amount / budget.total) * 100) : 0}%
                   </span>
-                </div>
+                </motion.div>
               ))}
-            </div>
-          </div>
-        </>
+            </motion.div>
+          </motion.div>
+        </motion.div>
       )}
     </div>
   );

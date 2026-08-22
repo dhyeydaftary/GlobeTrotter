@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ArrowLeft, Image, Sparkles } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
 import { post } from '../api/client';
 import ErrorBanner from '../components/ErrorBanner';
 import { TRIP_CARD_FALLBACK, HERO_PARIS, HERO_BALI, HERO_TOKYO, DASH_SANTORINI } from '../constants/images';
+import { springSettle } from '../lib/motion';
 
 const PRESET_COVERS = [
   { label: 'Santorini', url: DASH_SANTORINI },
@@ -15,6 +17,8 @@ const PRESET_COVERS = [
 const CreateTrip = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const reduceMotion = useReducedMotion();
+  const tapProps = reduceMotion ? {} : { whileTap: { scale: 0.97 }, transition: springSettle };
   const prefillCityName = location.state?.cityName || '';
 
   const [name, setName] = useState(prefillCityName ? `Trip to ${prefillCityName}` : '');
@@ -95,7 +99,7 @@ const CreateTrip = () => {
             <Sparkles className="w-3.5 h-3.5" />
             <span>New Journey</span>
           </div>
-          <h1 className="text-display-md text-2xl sm:text-3xl font-extrabold text-text-main">
+          <h1 className="text-display-lg text-2xl sm:text-3xl font-extrabold text-text-main">
             Plan a New Trip
           </h1>
           <p className="text-text-muted text-sm">
@@ -112,7 +116,12 @@ const CreateTrip = () => {
         <ErrorBanner message={error?.message} code={error?.code} onClose={() => setError(null)} />
 
         {/* Main Form Card */}
-        <div className="gt-card p-6 sm:p-8 space-y-6">
+        <motion.div
+          className="gt-card p-6 sm:p-8 space-y-6"
+          initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={springSettle}
+        >
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Trip Name */}
             <div>
@@ -215,10 +224,11 @@ const CreateTrip = () => {
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-[11px] text-text-muted font-medium mr-1">Presets:</span>
                     {PRESET_COVERS.map((preset) => (
-                      <button
+                      <motion.button
                         key={preset.label}
                         type="button"
                         onClick={() => setCoverPhotoUrl(preset.url)}
+                        whileTap={reduceMotion ? {} : { scale: 0.93, transition: springSettle }}
                         className={`text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors ${
                           coverPhotoUrl === preset.url
                             ? 'bg-accent text-white border-accent'
@@ -226,7 +236,7 @@ const CreateTrip = () => {
                         }`}
                       >
                         {preset.label}
-                      </button>
+                      </motion.button>
                     ))}
                   </div>
                 </div>
@@ -235,16 +245,17 @@ const CreateTrip = () => {
 
             {/* Submit Button */}
             <div className="pt-4 border-t border-border-light">
-              <button
+              <motion.button
                 type="submit"
                 disabled={saving || Boolean(dateError)}
-                className="w-full bg-accent hover:bg-accent-hover text-white font-bold py-3.5 rounded-btn shadow-btn-accent active:scale-[0.97] transition-all duration-150 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                {...tapProps}
+                className="w-full bg-accent hover:bg-accent-hover text-white font-bold py-3.5 rounded-btn shadow-btn-accent transition-colors duration-150 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? 'Creating trip...' : 'Create Trip →'}
-              </button>
+              </motion.button>
             </div>
           </form>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
