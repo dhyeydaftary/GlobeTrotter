@@ -1,5 +1,7 @@
 const { Op } = require('sequelize');
-const { Trip, TripStop, City, Activity } = require('../models');
+const {
+  Trip, TripStop, City, Activity, SavedDestination,
+} = require('../models');
 const { ApiError } = require('../middleware/errorHandler');
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
@@ -97,4 +99,57 @@ async function getRecommendations(req, res, next) {
   }
 }
 
-module.exports = { getRecommendations };
+// No-trip-context version of getRecommendations, for a user who hasn't created
+// a trip yet (fresh signup, or a seeded demo account with none). Same AI-first,
+// fallback-second shape, just without a trip to build the query/exclusion list
+// from — personalize off SavedDestination if the user has any, else a generic query.
+async function getGeneralRecommendations(req, res, next) {
+  try {
+    const savedDestinations = await SavedDestination.findAll({
+      where: { userId: req.userId },
+      include: [{ model: City, as: 'city' }],
+    });
+    const savedCityNames = savedDestinations.map((s) => s.city.name);
+
+    try {
+      const candidates = (await City.findAll())
+        .map((c) => ({ id: c.id, text: `${c.name} — ${c.description || c.country}` }));
+
+      const queryText = savedCityNames.length
+        ? `traveler interested in: ${savedCityNames.join(', ')}`
+        : 'popular travel destinations';
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+      const aiRes = await fetch(`${AI_SERVICE_URL}/recommend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ queryText, candidates }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!aiRes.ok) throw new Error(`AI service returned ${aiRes.status}`);
+      const { ranked } = await aiRes.json();
+
+      const topIds = ranked.slice(0, 5).map((r) => r.id);
+      const scoreById = Object.fromEntries(ranked.map((r) => [r.id, r.score]));
+
+      const hydrated = await City.findAll({ where: { id: { [Op.in]: topIds } } });
+
+      const recommendations = topIds
+        .map((id) => hydrated.find((h) => h.id === id))
+        .filter(Boolean)
+        .map((h) => ({ id: h.id, name: h.name, score: scoreById[h.id], reason: 'AI-matched to your interests' }));
+
+      return res.status(200).json({ source: 'ai', recommendations });
+    } catch (aiErr) {
+      const recommendations = await fallbackCityRecommendations([]);
+      return res.status(200).json({ source: 'fallback', recommendations });
+    }
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { getRecommendations, getGeneralRecommendations };

@@ -47,4 +47,46 @@ module.exports = [
   // Americas / Oceania
   { name: 'New York City', country: 'USA', region: 'North America', description: 'Skyscrapers, Broadway shows, museums, diverse food scenes and nightlife.', costIndex: 5, popularityScore: 90 },
   { name: 'Bora Bora', country: 'French Polynesia', region: 'Oceania', description: 'Overwater bungalows, turquoise lagoons, snorkeling and honeymoon luxury.', costIndex: 5, popularityScore: 73 },
+
+  // More India
+  { name: 'Agra', country: 'India', region: 'North India', description: 'Taj Mahal, Mughal architecture, marble mausoleums, historic monuments and UNESCO heritage.', costIndex: 2, popularityScore: 87 },
+  { name: 'Mysore', country: 'India', region: 'South India', description: 'Palaces, silk sarees, sandalwood, Dasara festival grandeur and royal Wodeyar heritage.', costIndex: 2, popularityScore: 71 },
+  { name: 'Pondicherry', country: 'India', region: 'South India', description: 'French colonial quarter, seafront promenade, pastel villas, yoga ashrams and cafe culture.', costIndex: 2, popularityScore: 69 },
+  { name: 'Munnar', country: 'India', region: 'South India', description: 'Rolling tea plantations, misty Western Ghats, spice gardens, waterfalls and cool hill-station air.', costIndex: 2, popularityScore: 73 },
+  { name: 'Shimla', country: 'India', region: 'North India', description: 'Colonial hill-station capital, mall road promenades, cedar forests, toy train and mountain views.', costIndex: 2, popularityScore: 72 },
+  { name: 'Hampi', country: 'India', region: 'South India', description: 'Ancient ruined temple city, boulder-strewn landscapes, UNESCO heritage and Vijayanagara Empire history.', costIndex: 1, popularityScore: 68 },
+
+  // More Europe
+  { name: 'London', country: 'UK', region: 'Western Europe', description: 'Royal palaces, world-class museums, West End theatre, multicultural food scenes and historic pubs.', costIndex: 5, popularityScore: 91 },
+  { name: 'Prague', country: 'Czech Republic', region: 'Central Europe', description: 'Gothic spires, medieval old town, castle views, beer culture and cobblestone charm.', costIndex: 3, popularityScore: 82 },
+  { name: 'Vienna', country: 'Austria', region: 'Central Europe', description: 'Imperial palaces, classical music heritage, coffeehouse culture, opera houses and elegant boulevards.', costIndex: 4, popularityScore: 80 },
+  { name: 'Lisbon', country: 'Portugal', region: 'Southern Europe', description: 'Pastel hillside streets, fado music, tram rides, seafood and Atlantic coastal light.', costIndex: 3, popularityScore: 83 },
+  { name: 'Reykjavik', country: 'Iceland', region: 'Northern Europe', description: 'Northern lights, geothermal hot springs, volcanic landscapes, glaciers and dramatic waterfalls.', costIndex: 5, popularityScore: 76 },
+  { name: 'Chamonix', country: 'France', region: 'Western Europe', description: 'Alpine ski resort, Mont Blanc views, mountaineering, snowboarding and cable-car glacier access.', costIndex: 4, popularityScore: 74 },
+  { name: 'Bordeaux', country: 'France', region: 'Western Europe', description: 'Wine-country vineyards, chateaux tastings, riverside architecture and gourmet French dining.', costIndex: 4, popularityScore: 71 },
+  { name: 'Dubrovnik', country: 'Croatia', region: 'Balkans', description: 'Walled medieval old town, Adriatic sea views, UNESCO heritage and cinematic fortress ramparts.', costIndex: 4, popularityScore: 79 },
+
+  // More Americas
+  { name: 'Rio de Janeiro', country: 'Brazil', region: 'South America', description: 'Copacabana beaches, Christ the Redeemer, samba carnival energy and Sugarloaf Mountain views.', costIndex: 3, popularityScore: 85 },
+  { name: 'Buenos Aires', country: 'Argentina', region: 'South America', description: 'Tango culture, steakhouse dining, European-style boulevards and vibrant nightlife.', costIndex: 2, popularityScore: 76 },
+  { name: 'Cancun', country: 'Mexico', region: 'North America', description: 'Caribbean beaches, all-inclusive resorts, Mayan ruins nearby and turquoise reef snorkeling.', costIndex: 3, popularityScore: 81 },
+  { name: 'Vancouver', country: 'Canada', region: 'North America', description: 'Mountain-meets-ocean skyline, rainforest hikes, seafood markets and outdoor adventure culture.', costIndex: 4, popularityScore: 75 },
+  { name: 'Cusco', country: 'Peru', region: 'South America', description: 'Gateway to Machu Picchu, Incan ruins, Andean markets and high-altitude mountain trekking.', costIndex: 2, popularityScore: 78 },
+  { name: 'San Francisco', country: 'USA', region: 'North America', description: 'Golden Gate views, cable cars, tech culture, foggy bay hikes and diverse food scenes.', costIndex: 5, popularityScore: 84 },
+
+  // More Africa
+  { name: 'Cairo', country: 'Egypt', region: 'North Africa', description: 'Pyramids of Giza, ancient tombs, Nile River cruises and bustling bazaar markets.', costIndex: 2, popularityScore: 83 },
+  { name: 'Zanzibar', country: 'Tanzania', region: 'East Africa', description: 'Spice plantations, white-sand beaches, Stone Town history and turquoise Indian Ocean waters.', costIndex: 3, popularityScore: 77 },
+  { name: 'Victoria Falls', country: 'Zambia', region: 'Southern Africa', description: 'Thundering waterfalls, bungee jumping, white-water rafting and safari game drives nearby.', costIndex: 3, popularityScore: 72 },
+  { name: 'Merzouga', country: 'Morocco', region: 'North Africa', description: 'Sahara Desert dunes, camel trekking, desert camping under the stars and Berber nomad culture.', costIndex: 2, popularityScore: 70 },
+
+  // More Southeast / East Asia
+  { name: 'Kuala Lumpur', country: 'Malaysia', region: 'Southeast Asia', description: 'Twin Towers skyline, hawker food courts, rainforest day trips and multicultural heritage.', costIndex: 2, popularityScore: 75 },
+  { name: 'Siem Reap', country: 'Cambodia', region: 'Southeast Asia', description: 'Angkor Wat temple complex, UNESCO heritage, jungle ruins and sunrise temple tours.', costIndex: 1, popularityScore: 78 },
+  { name: 'Osaka', country: 'Japan', region: 'East Asia', description: 'Street food capital, castle grounds, neon nightlife and easy access to Kyoto and Nara.', costIndex: 4, popularityScore: 79 },
+  { name: 'Hong Kong', country: 'China', region: 'East Asia', description: 'Skyscraper skyline, dim sum culture, harbor ferries, night markets and mountain hiking trails.', costIndex: 5, popularityScore: 82 },
+
+  // More Oceania / Caribbean
+  { name: 'Queenstown', country: 'New Zealand', region: 'Oceania', description: 'Bungee jumping birthplace, alpine lakes, ski slopes and adrenaline adventure sports capital.', costIndex: 4, popularityScore: 76 },
+  { name: 'Havana', country: 'Cuba', region: 'Caribbean', description: 'Classic vintage cars, colonial architecture, live salsa music and cigar culture streets.', costIndex: 2, popularityScore: 71 },
 ];
