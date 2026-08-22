@@ -1,0 +1,258 @@
+export const MOCK_USER = {
+  id: 'usr_99812',
+  email: 'alex.wanderlust@example.com',
+  name: 'Alex Rivera',
+  photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=400',
+};
+
+export const MOCK_TRIPS = [
+  {
+    id: 'trip_eu_2026',
+    userId: 'usr_99812',
+    name: 'Summer Euro Expedition',
+    startDate: '2026-06-01',
+    endDate: '2026-06-15',
+    description: 'Exploring classic European architecture, local culinary delights, and historic milestones across France & Italy.',
+    coverPhotoUrl: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&q=80&w=800',
+    stopCount: 3,
+    isPublic: true,
+    publicSlug: 'summer-euro-expedition-2026',
+  },
+  {
+    id: 'trip_asia_2026',
+    userId: 'usr_99812',
+    name: 'Tokyo & Kyoto Cherry Blossom',
+    startDate: '2026-04-05',
+    endDate: '2026-04-14',
+    description: 'Immersive journey through historic shrines, bullet trains, vibrant street markets, and modern technology.',
+    coverPhotoUrl: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&q=80&w=800',
+    stopCount: 2,
+    isPublic: false,
+    publicSlug: null,
+  },
+];
+
+export const MOCK_TRIP_DETAIL = {
+  id: 'trip_eu_2026',
+  userId: 'usr_99812',
+  name: 'Summer Euro Expedition',
+  startDate: '2026-06-01',
+  endDate: '2026-06-15',
+  description: 'Exploring classic European architecture, local culinary delights, and historic milestones across France & Italy.',
+  coverPhotoUrl: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&q=80&w=800',
+  isPublic: true,
+  publicSlug: 'summer-euro-expedition-2026',
+  ownerName: 'Alex Rivera',
+  stops: [
+    {
+      id: 'stop_paris',
+      cityId: 'city_paris',
+      city: {
+        id: 'city_paris',
+        name: 'Paris',
+        country: 'France',
+        region: 'Europe',
+        costIndex: 4,
+        popularityScore: 9.8,
+      },
+      arrivalDate: '2026-06-01',
+      departureDate: '2026-06-05',
+      scheduledActivities: [
+        {
+          id: 'sa_eiffel',
+          activityId: 'act_eiffel',
+          name: 'Eiffel Tower Summit Access & Champagne',
+          category: 'Sightseeing',
+          cost: 45.0,
+          costOverride: 45.0,
+          durationMinutes: 180,
+          scheduledDate: '2026-06-01',
+          scheduledTime: '16:00',
+          imageUrl: 'https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&q=80&w=400',
+        },
+        {
+          id: 'sa_louvre',
+          activityId: 'act_louvre',
+          name: 'Louvre Museum Timed Entry Guided Tour',
+          category: 'Culture',
+          cost: 32.0,
+          costOverride: null,
+          durationMinutes: 240,
+          scheduledDate: '2026-06-02',
+          scheduledTime: '10:00',
+          imageUrl: 'https://images.unsplash.com/photo-1565099824688-e93eb20fe622?auto=format&fit=crop&q=80&w=400',
+        },
+      ],
+    },
+    {
+      id: 'stop_rome',
+      cityId: 'city_rome',
+      city: {
+        id: 'city_rome',
+        name: 'Rome',
+        country: 'Italy',
+        region: 'Europe',
+        costIndex: 3,
+        popularityScore: 9.5,
+      },
+      arrivalDate: '2026-06-06',
+      departureDate: '2026-06-10',
+      scheduledActivities: [
+        {
+          id: 'sa_colosseum',
+          activityId: 'act_colosseum',
+          name: 'Colosseum & Underground Arena Tour',
+          category: 'History',
+          cost: 55.0,
+          costOverride: 50.0,
+          durationMinutes: 180,
+          scheduledDate: '2026-06-07',
+          scheduledTime: '09:30',
+          imageUrl: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&q=80&w=400',
+        },
+      ],
+    },
+    {
+      id: 'stop_barcelona',
+      cityId: 'city_bcn',
+      city: {
+        id: 'city_bcn',
+        name: 'Barcelona',
+        country: 'Spain',
+        region: 'Europe',
+        costIndex: 3,
+        popularityScore: 9.3,
+      },
+      arrivalDate: '2026-06-11',
+      departureDate: '2026-06-15',
+      scheduledActivities: [
+        {
+          id: 'sa_sagrada',
+          activityId: 'act_sagrada',
+          name: 'Sagrada Familia Fast Track Ticket',
+          category: 'Architecture',
+          cost: 38.0,
+          costOverride: null,
+          durationMinutes: 120,
+          scheduledDate: '2026-06-12',
+          scheduledTime: '11:00',
+          imageUrl: 'https://images.unsplash.com/photo-1583778176476-4a8b02a64c01?auto=format&fit=crop&q=80&w=400',
+        },
+      ],
+    },
+  ],
+};
+
+export const MOCK_BUDGET = {
+  total: 1240.5,
+  byCategory: {
+    transport: 300,
+    stay: 500,
+    activities: 340.5,
+    meals: 100,
+  },
+  byDay: [
+    { date: '2026-06-01', total: 120.0 },
+    { date: '2026-06-02', total: 95.0 },
+    { date: '2026-06-03', total: 310.0 },
+    { date: '2026-06-04', total: 85.0 },
+    { date: '2026-06-05', total: 140.0 },
+    { date: '2026-06-06', total: 220.0 },
+    { date: '2026-06-07', total: 270.5 },
+  ],
+  overBudgetDays: ['2026-06-03', '2026-06-07'],
+};
+
+export const MOCK_CITIES = [
+  {
+    id: 'city_paris',
+    name: 'Paris',
+    country: 'France',
+    region: 'Europe',
+    costIndex: 4,
+    popularityScore: 9.8,
+  },
+  {
+    id: 'city_rome',
+    name: 'Rome',
+    country: 'Italy',
+    region: 'Europe',
+    costIndex: 3,
+    popularityScore: 9.5,
+  },
+  {
+    id: 'city_tokyo',
+    name: 'Tokyo',
+    country: 'Japan',
+    region: 'Asia',
+    costIndex: 4,
+    popularityScore: 9.7,
+  },
+  {
+    id: 'city_bcn',
+    name: 'Barcelona',
+    country: 'Spain',
+    region: 'Europe',
+    costIndex: 3,
+    popularityScore: 9.3,
+  },
+];
+
+export const MOCK_ACTIVITIES = [
+  {
+    id: 'act_eiffel',
+    name: 'Eiffel Tower Summit Access',
+    category: 'Sightseeing',
+    cost: 45,
+    durationMinutes: 180,
+    imageUrl: 'https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&q=80&w=400',
+  },
+  {
+    id: 'act_louvre',
+    name: 'Louvre Museum Timed Entry',
+    category: 'Culture',
+    cost: 32,
+    durationMinutes: 240,
+    imageUrl: 'https://images.unsplash.com/photo-1565099824688-e93eb20fe622?auto=format&fit=crop&q=80&w=400',
+  },
+  {
+    id: 'act_colosseum',
+    name: 'Colosseum & Forum Ticket',
+    category: 'History',
+    cost: 55,
+    durationMinutes: 180,
+    imageUrl: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&q=80&w=400',
+  },
+  {
+    id: 'act_sagrada',
+    name: 'Sagrada Familia Entry',
+    category: 'Architecture',
+    cost: 38,
+    durationMinutes: 120,
+    imageUrl: 'https://images.unsplash.com/photo-1583778176476-4a8b02a64c01?auto=format&fit=crop&q=80&w=400',
+  },
+];
+
+export const MOCK_RECOMMENDATIONS = {
+  source: 'ai',
+  recommendations: [
+    {
+      id: 'rec_1',
+      name: 'Florence & Tuscany Countryside',
+      score: 9.6,
+      reason: 'Perfect mid-way stop between Rome & Venice with Renaissance art and wine tasting.',
+    },
+    {
+      id: 'rec_2',
+      name: 'Amsterdam Canals & Museums',
+      score: 9.4,
+      reason: 'Great high-speed rail connections from Paris with scenic historical canal belt.',
+    },
+    {
+      id: 'rec_3',
+      name: 'Swiss Alps Interlaken Railway',
+      score: 9.2,
+      reason: 'Unmatched alpine scenery seamlessly fitting your European itinerary timeline.',
+    },
+  ],
+};
