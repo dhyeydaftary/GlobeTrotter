@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { PlusCircle, Sparkles, Star, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { get } from '../api/client';
-import { MOCK_TRIPS, MOCK_RECOMMENDATIONS, withMockFallback } from '../api/mocks';
 import TripCard from '../components/TripCard';
 import ErrorBanner from '../components/ErrorBanner';
 import {
@@ -27,16 +26,15 @@ const Dashboard = () => {
     setError(null);
 
     try {
-      const fetchedTrips = await withMockFallback(() => get('/trips'), MOCK_TRIPS);
+      const fetchedTrips = await get('/trips');
       setTrips(fetchedTrips || []);
 
-      const firstTripId = fetchedTrips?.length > 0 ? fetchedTrips[0].id : 'trip_eu_2026';
-      const recommendationsResult = await withMockFallback(
-        () => get(`/trips/${firstTripId}/recommendations?type=city`),
-        MOCK_RECOMMENDATIONS
-      );
-
-      setRecData(recommendationsResult || { source: 'fallback', recommendations: [] });
+      if (fetchedTrips?.length > 0) {
+        const recommendationsResult = await get(`/trips/${fetchedTrips[0].id}/recommendations?type=city`);
+        setRecData(recommendationsResult || { source: 'fallback', recommendations: [] });
+      } else {
+        setRecData({ source: 'ai', recommendations: [] });
+      }
     } catch (err) {
       setError({
         message: err.message || 'Failed to load your dashboard data. Please try again.',

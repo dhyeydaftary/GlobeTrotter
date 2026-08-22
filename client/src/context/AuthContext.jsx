@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { get } from '../api/client';
-import { MOCK_USER } from '../api/mocks';
 import Spinner from '../components/Spinner';
 
 const AuthContext = createContext(null);
@@ -22,10 +21,11 @@ export const AuthProvider = ({ children }) => {
             setToken(storedToken);
           }
         } catch (err) {
-          // If backend isn't live or fails, fallback to mock user for smooth developer experience
+          // Stored token is stale/invalid (or backend rejected it) — don't trust it, log out cleanly.
           if (isMounted) {
-            setUser(MOCK_USER);
-            setToken(storedToken);
+            localStorage.removeItem('globetrotter_token');
+            setUser(null);
+            setToken(null);
           }
         }
       }

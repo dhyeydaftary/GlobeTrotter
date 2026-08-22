@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Sparkles, Globe, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { post } from '../api/client';
-import { MOCK_USER } from '../api/mocks';
 import { HERO_PARIS, TRIP_CARD_FALLBACK } from '../constants/images';
 
 const LoginPage = () => {
@@ -15,10 +14,18 @@ const LoginPage = () => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const handleQuickDemoLogin = () => {
-    const fakeToken = 'mock_jwt_token_' + Date.now();
-    login(fakeToken, MOCK_USER);
-    navigate('/dashboard');
+  const handleQuickDemoLogin = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const data = await post('/auth/login', { email: 'demo@globetrotter.app', password: 'demo1234' });
+      login(data.token, data.user);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.message || 'Failed to sign in to the demo account.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -37,13 +44,7 @@ const LoginPage = () => {
       login(data.token, data.user);
       navigate('/dashboard');
     } catch (err) {
-      if (err.code === 'NETWORK_ERROR' || err.code === 'HTTP_ERROR' || err.code === 'UNKNOWN_ERROR') {
-        const fakeToken = 'mock_jwt_token_' + Date.now();
-        login(fakeToken, { ...MOCK_USER, email });
-        navigate('/dashboard');
-      } else {
-        setError(err.message || 'Invalid email or password.');
-      }
+      setError(err.message || 'Invalid email or password.');
     } finally {
       setLoading(false);
     }

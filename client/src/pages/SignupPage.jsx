@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Sparkles, Globe, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { post } from '../api/client';
-import { MOCK_USER } from '../api/mocks';
 import { HERO_BALI, TRIP_CARD_FALLBACK } from '../constants/images';
 
 const SignupPage = () => {
@@ -16,10 +15,18 @@ const SignupPage = () => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const handleQuickDemoSignup = () => {
-    const fakeToken = 'mock_jwt_token_' + Date.now();
-    login(fakeToken, MOCK_USER);
-    navigate('/dashboard');
+  const handleQuickDemoSignup = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const data = await post('/auth/login', { email: 'demo@globetrotter.app', password: 'demo1234' });
+      login(data.token, data.user);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.message || 'Failed to sign in to the demo account.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -43,13 +50,7 @@ const SignupPage = () => {
       login(data.token, data.user);
       navigate('/dashboard');
     } catch (err) {
-      if (err.code === 'NETWORK_ERROR' || err.code === 'HTTP_ERROR' || err.code === 'UNKNOWN_ERROR') {
-        const fakeToken = 'mock_jwt_token_' + Date.now();
-        login(fakeToken, { ...MOCK_USER, name: name.trim(), email: email.trim() });
-        navigate('/dashboard');
-      } else {
-        setError(err.message || 'Failed to create account.');
-      }
+      setError(err.message || 'Failed to create account.');
     } finally {
       setLoading(false);
     }
