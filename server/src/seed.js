@@ -33,11 +33,15 @@ async function seed() {
   const demoUser = await User.create({
     email: 'demo@globetrotter.app',
     passwordHash: demoPasswordHash,
+    firstName: 'Demo',
+    lastName: 'Traveler',
     name: 'Demo Traveler',
   });
   const inspirationUser = await User.create({
     email: 'inspiration@globetrotter.app',
     passwordHash: demoPasswordHash,
+    firstName: 'Priya',
+    lastName: 'Inspiration',
     name: 'Priya (Inspiration Account)',
   });
   console.log('Demo users: demo@globetrotter.app / demo1234 (main demo account)');

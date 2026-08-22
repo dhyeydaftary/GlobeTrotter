@@ -1,7 +1,9 @@
+import { getStoredToken } from '../utils/tokenStorage';
+
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
 async function request(path, options = {}) {
-  const token = localStorage.getItem('globetrotter_token');
+  const token = getStoredToken();
   const headers = {
     'Content-Type': 'application/json',
     ...(options.headers || {}),
