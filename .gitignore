@@ -62,3 +62,9 @@ Desktop.ini
 coverage/
 .nyc_output/
 *.tmp
+# AI agent config
+GEMINI.md
+.agents/
+
+# Env files (safety net — subdirectories have their own .gitignore too)
+.env
