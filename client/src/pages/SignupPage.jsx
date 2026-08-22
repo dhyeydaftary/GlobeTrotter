@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Globe, Lock, Mail, User, ArrowRight, Sparkles } from 'lucide-react';
+import { Sparkles, Globe, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { post } from '../api/client';
 import { MOCK_USER } from '../api/mocks';
-import ErrorBanner from '../components/ErrorBanner';
+import { HERO_BALI, TRIP_CARD_FALLBACK } from '../constants/images';
 
 const SignupPage = () => {
   const navigate = useNavigate();
@@ -14,7 +14,7 @@ const SignupPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleQuickDemoSignup = () => {
     const fakeToken = 'mock_jwt_token_' + Date.now();
@@ -26,33 +26,17 @@ const SignupPage = () => {
     e.preventDefault();
     setError(null);
 
-    if (!name.trim()) {
-      setError({ message: 'Full name is required.' });
-      return;
-    }
-
-    if (!email.trim()) {
-      setError({ message: 'Email address is required.' });
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      setError({ message: 'Please enter a valid email address.' });
-      return;
-    }
-
-    if (!password) {
-      setError({ message: 'Password is required.' });
+    if (!name.trim() || !email.trim() || !password) {
+      setError('Please fill in all required fields.');
       return;
     }
 
     if (password.length < 6) {
-      setError({ message: 'Password must be at least 6 characters long.' });
+      setError('Password must be at least 6 characters long.');
       return;
     }
 
-    setIsSubmitting(true);
+    setLoading(true);
 
     try {
       const data = await post('/auth/signup', { name: name.trim(), email: email.trim(), password });
@@ -64,141 +48,169 @@ const SignupPage = () => {
         login(fakeToken, { ...MOCK_USER, name: name.trim(), email: email.trim() });
         navigate('/dashboard');
       } else {
-        setError({
-          message: err.message || 'Failed to create account. Please try again.',
-          code: err.code,
-        });
+        setError(err.message || 'Failed to create account.');
       }
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-surface py-12 px-4">
-      {/* Card Container: max-w-420px, p-10 (40px), rounded-20px */}
-      <div className="w-full max-w-[420px] bg-white p-10 rounded-[20px] shadow-[0_4_24px_rgba(0,0,0,0.08)] border border-borderLight space-y-6">
-        {/* Logo & Title Header */}
-        <div className="text-center">
-          <Link to="/" className="inline-flex items-center space-x-2.5 mb-3 group">
-            <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center shadow-accent-glow">
-              <Globe className="w-6 h-6 text-white" />
-            </div>
-            <span className="font-display font-black text-2xl tracking-tight text-primary">
-              Globe<span className="text-accent font-black">Trotter</span>
-            </span>
-          </Link>
-          <h1 className="text-2xl font-bold text-textMain tracking-tight font-display">
-            Create your account
-          </h1>
-          <p className="mt-1 text-xs text-textMuted leading-relaxed">
-            Plan multi-city trips, track budgets, and share itineraries
-          </p>
+    <div className="page-enter min-h-screen bg-surface flex flex-col md:flex-row pt-16">
+      {/* Left Column (Desktop Hero Brand Showcase) */}
+      <div className="hidden md:flex md:w-1/2 relative bg-gradient-to-br from-[#1A1A2E] via-[#2D2A5C] to-[#14141F] text-white p-12 lg:p-16 flex-col justify-between overflow-hidden">
+        {/* Subtle background glow effect */}
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-accent/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-accent/15 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Top brand moment */}
+        <div className="relative z-10">
+          <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/15 text-xs font-semibold text-accent-light">
+            <Sparkles className="w-3.5 h-3.5 text-accent" />
+            <span>AI-Powered Travel Experience</span>
+          </div>
         </div>
 
-        {/* Demo Mode Quick Button */}
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
-          <p className="text-[11px] text-amber-900 font-bold mb-1.5">
-            🚀 Hackathon Demo Mode
-          </p>
-          <button
-            type="button"
-            onClick={handleQuickDemoSignup}
-            className="w-full inline-flex items-center justify-center space-x-2 py-2 px-3 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-btn shadow-sm transition-colors"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Instant Demo Sign In</span>
-          </button>
+        {/* Centerpiece Photography & Reassurance */}
+        <div className="relative z-10 my-8 space-y-6">
+          <div className="relative rounded-2xl overflow-hidden border border-white/15 shadow-2xl max-w-md aspect-[4/3]">
+            <img
+              src={HERO_BALI}
+              alt="Travel destination"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.target.src = TRIP_CARD_FALLBACK;
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+            <div className="absolute bottom-4 left-4 right-4">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-accent-light bg-accent/80 px-2.5 py-0.5 rounded-full">
+                Effortless Planning
+              </span>
+              <p className="text-white font-display font-bold text-base mt-1">
+                Your journey starts here
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2 max-w-md">
+            <h2 className="text-display-md text-2xl lg:text-3xl font-extrabold text-white">
+              Create your account in seconds.
+            </h2>
+            <p className="text-text-light text-sm leading-relaxed">
+              Join travelers building multi-city itineraries, discovering local activities, and tracking travel budgets effortlessly.
+            </p>
+          </div>
         </div>
 
-        {/* Red Error Banner above submit button */}
-        {error && (
-          <ErrorBanner
-            message={error.message}
-            code={error.code}
-            onClose={() => setError(null)}
-          />
-        )}
+        {/* Bottom footer credit */}
+        <div className="relative z-10 flex items-center justify-between text-xs text-white/50 border-t border-white/10 pt-4">
+          <span>GlobeTrotter Travel Planner</span>
+          <span>© 2026</span>
+        </div>
+      </div>
 
-        {/* Signup Form */}
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label htmlFor="signup-name">Full Name</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <User className="w-4 h-4" />
-              </div>
-              <input
-                id="signup-name"
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="block w-full pl-10 pr-3.5 py-2.5 border border-borderLight rounded-input text-sm bg-slate-50/50"
-                placeholder="Alex Rivera"
-              />
+      {/* Right Column (Form Container) */}
+      <div className="w-full md:w-1/2 flex items-center justify-center p-6 sm:p-10 lg:p-16 bg-surface">
+        <div className="w-full max-w-md bg-surface-card rounded-card border border-border-light shadow-card p-8 sm:p-10">
+          {/* Logo & Headline */}
+          <div className="mb-6 text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-accent text-white shadow-btn-accent mb-4">
+              <Globe className="w-6 h-6" />
             </div>
+            <h1 className="text-display-md text-2xl font-bold text-text-main">
+              Get Started Free
+            </h1>
+            <p className="text-text-muted text-sm mt-1">
+              Start planning your next adventure
+            </p>
           </div>
 
-          <div>
-            <label htmlFor="signup-email">Email address</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <Mail className="w-4 h-4" />
-              </div>
-              <input
-                id="signup-email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="block w-full pl-10 pr-3.5 py-2.5 border border-borderLight rounded-input text-sm bg-slate-50/50"
-                placeholder="you@example.com"
-              />
+          {/* Restyled Hackathon Demo Banner */}
+          <div className="mb-6 bg-accent-light/70 border border-accent/20 rounded-xl p-3.5 text-center space-y-2">
+            <div className="flex items-center justify-center space-x-1.5 text-xs font-bold text-accent-dark">
+              <Sparkles className="w-3.5 h-3.5 text-accent" />
+              <span>Hackathon Demo Mode</span>
             </div>
-          </div>
-
-          <div>
-            <label htmlFor="signup-password">Password</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <Lock className="w-4 h-4" />
-              </div>
-              <input
-                id="signup-password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="block w-full pl-10 pr-3.5 py-2.5 border border-borderLight rounded-input text-sm bg-slate-50/50"
-                placeholder="At least 6 characters"
-              />
-            </div>
-          </div>
-
-          <div className="pt-2">
             <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full flex justify-center items-center space-x-2 py-3 px-4 text-sm font-bold rounded-btn text-white bg-accent hover:bg-accent-hover transition-all shadow-accent-glow disabled:opacity-50"
+              type="button"
+              onClick={handleQuickDemoSignup}
+              className="w-full inline-flex items-center justify-center space-x-1.5 py-2 px-3 bg-white border border-accent/30 hover:border-accent hover:bg-accent-light text-accent-dark font-semibold text-xs rounded-btn transition-colors shadow-sm active:scale-[0.97]"
             >
-              {isSubmitting ? (
-                'Creating account...'
-              ) : (
-                <>
-                  <span>Create Account</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
+              <span>Instant Demo Sign In</span>
+              <ArrowRight className="w-3.5 h-3.5 text-accent" />
             </button>
           </div>
-        </form>
 
-        <div className="text-center pt-4 border-t border-borderLight">
-          <p className="text-xs text-textMuted">
+          {/* Error Banner */}
+          {error && (
+            <div className="mb-5 p-3.5 rounded-xl bg-danger/10 border border-danger/20 text-danger text-xs sm:text-sm flex items-start gap-2">
+              <span className="font-bold">⚠</span>
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-1.5">
+                Full Name
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Alex Rivera"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-4 py-3 rounded-btn border border-border-light bg-surface text-text-main placeholder:text-text-light text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-150"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-1.5">
+                Email address
+              </label>
+              <input
+                type="email"
+                required
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 rounded-btn border border-border-light bg-surface text-text-main placeholder:text-text-light text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-150"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-1.5">
+                Password
+              </label>
+              <input
+                type="password"
+                required
+                placeholder="At least 6 characters"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 rounded-btn border border-border-light bg-surface text-text-main placeholder:text-text-light text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-150"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-accent hover:bg-accent-hover text-white font-bold py-3.5 rounded-btn shadow-btn-accent active:scale-[0.97] transition-all duration-150 mt-3 text-sm disabled:opacity-50"
+            >
+              {loading ? 'Creating account...' : 'Create Account'}
+            </button>
+          </form>
+
+          {/* Switch Link */}
+          <p className="text-center text-xs sm:text-sm text-text-muted mt-6">
             Already have an account?{' '}
-            <Link to="/login" className="font-bold text-primary hover:text-primary-light transition-colors">
-              Sign in
+            <Link
+              to="/login"
+              className="text-accent font-bold hover:text-accent-dark transition-colors"
+            >
+              Log in
             </Link>
           </p>
         </div>
