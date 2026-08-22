@@ -36,6 +36,7 @@ const ErrorBanner = ({ message, code, onRetry, onClose }) => {
             onClick={onClose}
             className="text-rose-400 hover:text-rose-600 p-1.5 rounded-lg transition-colors"
             title="Dismiss error"
+            aria-label="Dismiss error"
           >
             <X className="w-4 h-4" />
           </button>

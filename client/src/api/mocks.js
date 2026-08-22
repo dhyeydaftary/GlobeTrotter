@@ -1,3 +1,24 @@
+/**
+ * Isolated mock catalog — NETWORK FAILURE FALLBACK ONLY.
+ *
+ * Pages must call `withMockFallback(apiFn, mock)` so mocks are never the default
+ * success path. When the backend is live for demo, delete this file and every
+ * `withMockFallback` import in a single pass.
+ */
+export async function withMockFallback(requestFn, mockValue) {
+  try {
+    return await requestFn();
+  } catch (err) {
+    if (err?.code === 'NETWORK_ERROR') {
+      console.warn(
+        '[GlobeTrotter mocks] Network failure — serving isolated mock. Remove src/api/mocks.js before a live-API demo.'
+      );
+      return typeof mockValue === 'function' ? mockValue(err) : mockValue;
+    }
+    throw err;
+  }
+}
+
 export const MOCK_USER = {
   id: 'usr_99812',
   email: 'alex.wanderlust@example.com',
@@ -43,6 +64,7 @@ export const MOCK_TRIP_DETAIL = {
   isPublic: true,
   publicSlug: 'summer-euro-expedition-2026',
   ownerName: 'Alex Rivera',
+  dailyBudgetThreshold: 200,
   stops: [
     {
       id: 'stop_paris',

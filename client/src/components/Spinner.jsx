@@ -10,7 +10,7 @@ const Spinner = ({ size = 'md', className = '' }) => {
   return (
     <div className={`flex flex-col items-center justify-center p-4 ${className}`}>
       <div
-        className={`${sizeClasses[size] || sizeClasses.md} border-primary/20 border-t-accent rounded-full animate-spin`}
+        className={`${sizeClasses[size] || sizeClasses.md} border-accent/20 border-t-accent rounded-full animate-spin`}
         role="status"
         aria-label="loading"
       />
