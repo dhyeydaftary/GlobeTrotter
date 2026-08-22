@@ -1,0 +1,203 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-accent: #5B5BF6;
+  --color-accent-dark: #4746E0;
+  --color-surface: #FAFAFC;
+  --color-text-primary: #15161F;
+  --color-text-muted: #6B6B7B;
+
+  --font-display: 'Plus Jakarta Sans', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Global transition defaults */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    color: var(--color-text-primary);
+  }
+}
+
+/* Frosted glass surface — for navbars, floating panels, sticky headers */
+.gt-glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* Dark variant, for use over the landing-page hero only */
+.gt-glass-dark {
+  background: rgba(20, 20, 31, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Frosted glass panel — floating cards over a decorative backdrop (auth flows,
+   modal-like steps). Unlike .gt-glass (anchored to a viewport edge, bottom
+   border only), this is a free-floating card so it gets a full border with
+   the brightest edge on top, catching light from "above". */
+.gt-glass-panel {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-top-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 32px rgba(15, 15, 30, 0.08);
+}
+
+/* Size-specific type tracking, per Apple typography guidance */
+.text-display-lg {
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+.text-display-md {
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+}
+.text-body {
+  letter-spacing: 0;
+  line-height: 1.5;
+}
+
+/* Button base interactions — physical critically-damped spring response */
+button {
+  transition: transform 140ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 140ms ease-out, background-color 140ms ease-out, border-color 140ms ease-out;
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Card base interactions */
+.gt-card {
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 200ms ease-out, border-color 200ms ease-out;
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid #E9E9F0;
+  box-shadow: 0 1px 2px rgba(15, 15, 30, 0.04), 0 8px 24px rgba(15, 15, 30, 0.06);
+}
+
+.gt-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(15, 15, 30, 0.06), 0 16px 40px rgba(15, 15, 30, 0.10);
+}
+
+/* Input focus */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid #5B5BF6 !important;
+  outline-offset: 2px !important;
+  transition: outline 140ms ease-out;
+}
+
+/* Page fade-in on route mount */
+.page-enter {
+  animation: fadeInUp 0.35s ease-out forwards;
+}
+
+/* Skeleton shimmer */
+.skeleton {
+  background: linear-gradient(90deg, #F4F4F8 25%, #E9E9F0 50%, #F4F4F8 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 10px;
+}
+
+/* Keyframe animations */
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+
+  100% {
+    background-position: 200% center;
+  }
+}
+
+
+
+
+
+/* CSS animation classes removed — section reveals now handled by motion (motion/react).
+   See client/src/lib/motion.js for shared spring configs + reduced-motion helpers. */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Slow down or kill CSS-driven animations (shimmer, page-enter).
+     motion/react section reveals are handled by getMotionProps() in lib/motion.js — no duplicate needed here. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .page-enter {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .gt-card:hover {
+    transform: none !important;
+  }
+
+  button:active:not(:disabled) {
+    transform: none !important;
+  }
+}
+
+/* Custom Scrollbars */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F4F4F8;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D5D5E0;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9797A8;
+}

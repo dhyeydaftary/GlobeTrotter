@@ -10,8 +10,10 @@ Standard error shape (all endpoints):
 ## Authentication
 
 ### POST /auth/signup — Auth: none
-Request: `{ "email": "a@b.com", "password": "secret123", "name": "Dhyey" }`
-Response 201: `{ "token": "...", "user": { "id": "...", "email": "...", "name": "..." } }`
+Request: `{ "email": "a@b.com", "password": "secret123", "firstName": "Dhyey", "lastName": "Daftary" }`
+`confirmPassword` is frontend-only validation and is never sent to this endpoint.
+Response 201: `{ "token": "...", "user": { "id": "...", "email": "...", "name": "...", "firstName": "...", "lastName": "...", "photoUrl": null } }`
+Errors: 400 `VALIDATION_ERROR` — missing/empty `firstName`/`lastName`, password under 6 chars, or email already in use (`field: "email"`).
 
 ### POST /auth/login — Auth: none
 Request: `{ "email": "a@b.com", "password": "secret123" }`
@@ -22,7 +24,17 @@ Errors: 401 `INVALID_CREDENTIALS`
 Response 200: `{ "success": true }` (client discards token; stateless JWT)
 
 ### GET /auth/me — Auth required
-Response 200: `{ "id": "...", "email": "...", "name": "...", "photoUrl": null }`
+Response 200: `{ "id": "...", "email": "...", "name": "...", "firstName": "...", "lastName": "...", "photoUrl": null }`
+
+### POST /auth/forgot-password — Auth: none
+Request: `{ "email": "a@b.com" }`
+Response 200 (always, regardless of whether the email is registered): `{ "message": "If an account exists for this email, a code has been sent." }`
+Behavior: if the email matches a user, generates a 6-digit numeric OTP, stores it with a 10-minute expiry, and emails it via Resend (`src/services/emailService.js`). Never reveals whether the email exists — same response and status code either way, and email-delivery failures are logged server-side but don't change the response or fail the request.
+
+### POST /auth/reset-password — Auth: none
+Request: `{ "email": "a@b.com", "otp": "482913", "newPassword": "newSecret123" }`
+Response 200: `{ "message": "Password reset successfully." }`
+Errors: 400 `VALIDATION_ERROR` (missing fields or password under 6 chars), 400 `INVALID_OTP` (wrong code or no code on file), 400 `OTP_EXPIRED` (code matched but the 10-minute window passed). On success, the OTP fields are cleared so the code can't be reused.
 
 ## Trips
 
