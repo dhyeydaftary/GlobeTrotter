@@ -68,3 +68,6 @@ GEMINI.md
 
 # Env files (safety net — subdirectories have their own .gitignore too)
 .env
+
+# Vite runtime temp files
+*.timestamp-*.mjs
