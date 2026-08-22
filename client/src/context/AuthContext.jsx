@@ -1,18 +1,19 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { get } from '../api/client';
+import { getStoredToken, setStoredToken, clearStoredToken } from '../utils/tokenStorage';
 import Spinner from '../components/Spinner';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(() => localStorage.getItem('globetrotter_token'));
+  const [token, setToken] = useState(() => getStoredToken());
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
     const rehydrateUser = async () => {
-      const storedToken = localStorage.getItem('globetrotter_token');
+      const storedToken = getStoredToken();
       if (storedToken) {
         try {
           const userData = await get('/auth/me');
@@ -23,7 +24,7 @@ export const AuthProvider = ({ children }) => {
         } catch (err) {
           // Stored token is stale/invalid (or backend rejected it) — don't trust it, log out cleanly.
           if (isMounted) {
-            localStorage.removeItem('globetrotter_token');
+            clearStoredToken();
             setUser(null);
             setToken(null);
           }
@@ -40,14 +41,14 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  const login = (newToken, userData) => {
-    localStorage.setItem('globetrotter_token', newToken);
+  const login = (newToken, userData, remember = true) => {
+    setStoredToken(newToken, remember);
     setToken(newToken);
     setUser(userData);
   };
 
   const logout = () => {
-    localStorage.removeItem('globetrotter_token');
+    clearStoredToken();
     setToken(null);
     setUser(null);
   };
