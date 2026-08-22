@@ -16,11 +16,13 @@ import {
   Sparkles,
   MapPin,
 } from 'lucide-react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { get, post, patch, del } from '../api/client';
 import { MOCK_TRIP_DETAIL, MOCK_CITIES, MOCK_ACTIVITIES, withMockFallback } from '../api/mocks';
 import ErrorBanner from '../components/ErrorBanner';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { springSettle } from '../lib/motion';
 
 function formatDate(dateStr) {
   if (!dateStr) return '';
@@ -31,18 +33,19 @@ function toggleChip(list, value) {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 }
 
-const Chip = ({ active, onClick, children }) => (
-  <button
+const Chip = ({ active, onClick, children, reduceMotion }) => (
+  <motion.button
     type="button"
     onClick={onClick}
-    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all active:scale-[0.97] ${
+    whileTap={reduceMotion ? {} : { scale: 0.94, transition: springSettle }}
+    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors ${
       active
         ? 'bg-accent text-white border-accent shadow-sm'
         : 'bg-surface text-text-muted border-border-light hover:border-accent/40 hover:text-text-main'
     }`}
   >
     {children}
-  </button>
+  </motion.button>
 );
 
 const ItineraryBuilder = () => {
@@ -320,6 +323,9 @@ const ItineraryBuilder = () => {
   };
 
   const isOwner = user && (!trip?.userId || trip.userId === user.id);
+  const reduceMotion = useReducedMotion();
+  const tapProps = reduceMotion ? {} : { whileTap: { scale: 0.97 }, transition: springSettle };
+  const smallTapProps = reduceMotion ? {} : { whileTap: { scale: 0.93 }, transition: springSettle };
 
   if (loading) {
     return (
@@ -334,7 +340,12 @@ const ItineraryBuilder = () => {
   if (!trip) return <ErrorBanner message="Trip not found" onRetry={fetchTrip} />;
 
   return (
-    <div className="page-enter max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pt-24 pb-16 space-y-8">
+    <div className="page-enter relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pt-24 pb-16 space-y-8">
+      {/* Decorative backdrop — gives the glass panels below (Add Stop / Add Activity)
+          real visual variation to blur, per the frosted-glass material system. */}
+      <div className="fixed top-24 right-0 w-96 h-96 bg-accent/10 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="fixed bottom-0 left-0 w-80 h-80 bg-accent/[0.06] rounded-full blur-3xl pointer-events-none -z-10" />
+
       {/* Top Banner Header */}
       <div className="gt-card p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
@@ -344,7 +355,7 @@ const ItineraryBuilder = () => {
               {formatDate(trip.startDate)} – {formatDate(trip.endDate)}
             </span>
           </div>
-          <h1 className="text-display-md text-2xl sm:text-3xl font-extrabold text-text-main">
+          <h1 className="text-display-lg text-2xl sm:text-3xl font-extrabold text-text-main">
             {trip.name}
           </h1>
           {trip.description && (
@@ -353,21 +364,25 @@ const ItineraryBuilder = () => {
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
-          <Link
-            to={`/trips/${trip.id}/view`}
-            className="inline-flex items-center gap-1.5 text-xs font-bold bg-surface-raised hover:bg-border-light text-text-main px-4 py-2.5 rounded-btn border border-border-light active:scale-[0.97] transition-all"
-          >
-            <Eye className="w-4 h-4 text-accent" />
-            <span>View Itinerary</span>
-          </Link>
+          <motion.div {...tapProps}>
+            <Link
+              to={`/trips/${trip.id}/view`}
+              className="inline-flex items-center gap-1.5 text-xs font-bold bg-surface-raised hover:bg-border-light text-text-main px-4 py-2.5 rounded-btn border border-border-light transition-colors"
+            >
+              <Eye className="w-4 h-4 text-accent" />
+              <span>View Itinerary</span>
+            </Link>
+          </motion.div>
 
-          <Link
-            to={`/trips/${trip.id}/budget`}
-            className="inline-flex items-center gap-1.5 text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2.5 rounded-btn border border-emerald-200 active:scale-[0.97] transition-all"
-          >
-            <DollarSign className="w-4 h-4" />
-            <span>Budget Details</span>
-          </Link>
+          <motion.div {...tapProps}>
+            <Link
+              to={`/trips/${trip.id}/budget`}
+              className="inline-flex items-center gap-1.5 text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2.5 rounded-btn border border-emerald-200 transition-colors"
+            >
+              <DollarSign className="w-4 h-4" />
+              <span>Budget Details</span>
+            </Link>
+          </motion.div>
         </div>
       </div>
 
@@ -381,25 +396,33 @@ const ItineraryBuilder = () => {
         </div>
 
         {isOwner && (
-          <button
+          <motion.button
             onClick={() => setShowAddStopPanel(!showAddStopPanel)}
-            className="inline-flex items-center gap-1.5 bg-accent hover:bg-accent-hover text-white font-bold px-4 py-2.5 rounded-btn text-xs shadow-btn-accent active:scale-[0.97] transition-all"
+            {...tapProps}
+            className="inline-flex items-center gap-1.5 bg-accent hover:bg-accent-hover text-white font-bold px-4 py-2.5 rounded-btn text-xs shadow-btn-accent transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span>{showAddStopPanel ? 'Close Panel' : 'Add Stop'}</span>
-          </button>
+          </motion.button>
         )}
       </div>
 
-      {/* Slide-Down Frosted Glass Panel for Add Stop */}
-      <div
-        className={`transition-all duration-300 ease-out overflow-hidden ${
-          showAddStopPanel ? 'max-h-[760px] opacity-100 mb-6' : 'max-h-0 opacity-0'
-        }`}
-      >
+      {/* Slide-Down Frosted Glass Panel for Add Stop — spring height/opacity,
+          reversible mid-flight since AnimatePresence + layout animate from the
+          live value, not a fixed-duration CSS max-height trick. */}
+      <AnimatePresence initial={false}>
+        {showAddStopPanel && (
+          <motion.div
+            key="add-stop-panel"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={reduceMotion ? { duration: 0.15 } : springSettle}
+            className="overflow-hidden mb-6"
+          >
         <form
           onSubmit={handleAddStopSubmit}
-          className="gt-glass p-6 sm:p-7 rounded-card space-y-5 border border-accent/30 shadow-glass"
+          className="gt-glass-panel p-6 sm:p-7 rounded-card space-y-5"
         >
           <div className="flex items-center justify-between border-b border-border-light pb-3">
             <div className="flex items-center space-x-2">
@@ -440,6 +463,7 @@ const ItineraryBuilder = () => {
                       key={region}
                       active={cityRegions.includes(region)}
                       onClick={() => setCityRegions((prev) => toggleChip(prev, region))}
+                      reduceMotion={reduceMotion}
                     >
                       {region}
                     </Chip>
@@ -454,10 +478,11 @@ const ItineraryBuilder = () => {
                   .map((city) => {
                     const isSelected = selectedCity?.id === city.id;
                     return (
-                      <button
+                      <motion.button
                         key={city.id}
                         type="button"
                         onClick={() => setSelectedCity(city)}
+                        whileTap={reduceMotion ? {} : { scale: 0.98, transition: springSettle }}
                         className={`w-full text-left px-3.5 py-2.5 text-xs flex items-center justify-between transition-colors ${
                           isSelected
                             ? 'bg-accent-light text-accent font-bold'
@@ -471,7 +496,7 @@ const ItineraryBuilder = () => {
                           </span>
                         </span>
                         {isSelected && <Check className="w-4 h-4 text-accent" />}
-                      </button>
+                      </motion.button>
                     );
                   })}
               </div>
@@ -505,39 +530,45 @@ const ItineraryBuilder = () => {
           </div>
 
           <div className="flex justify-end space-x-3 pt-2 border-t border-border-light/60">
-            <button
+            <motion.button
               type="button"
               onClick={() => setShowAddStopPanel(false)}
+              whileTap={reduceMotion ? {} : { scale: 0.97, transition: springSettle }}
               className="px-4 py-2 text-xs font-semibold text-text-muted hover:text-text-main rounded-btn hover:bg-surface-raised transition-colors"
             >
               Cancel
-            </button>
-            <button
+            </motion.button>
+            <motion.button
               type="submit"
               disabled={isAddingStop || !selectedCity}
-              className="px-5 py-2.5 text-xs font-bold bg-accent hover:bg-accent-hover text-white rounded-btn shadow-btn-accent active:scale-[0.97] transition-all disabled:opacity-50"
+              whileTap={reduceMotion ? {} : { scale: 0.97, transition: springSettle }}
+              className="px-5 py-2.5 text-xs font-bold bg-accent hover:bg-accent-hover text-white rounded-btn shadow-btn-accent transition-colors disabled:opacity-50"
             >
               {isAddingStop ? 'Adding stop...' : 'Confirm Stop'}
-            </button>
+            </motion.button>
           </div>
         </form>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Stop Cards */}
       {trip.stops?.length === 0 ? (
         <div className="gt-card p-10 text-center border-dashed text-text-muted space-y-3">
           <p className="text-sm font-medium">No stops added to this trip yet.</p>
-          <button
+          <motion.button
             type="button"
             onClick={() => setShowAddStopPanel(true)}
+            whileTap={reduceMotion ? {} : { scale: 0.96, transition: springSettle }}
             className="text-xs font-bold text-accent hover:underline inline-flex items-center gap-1"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Click here to add your first stop</span>
-          </button>
+          </motion.button>
         </div>
       ) : (
         <div className="space-y-5">
+          <AnimatePresence initial={false}>
           {trip.stops?.map((stop, index) => {
             const isExpanded = expandedStops.has(stop.id);
 
@@ -555,7 +586,15 @@ const ItineraryBuilder = () => {
             }));
 
             return (
-              <div key={stop.id} className="gt-card p-0 overflow-hidden shadow-card hover:shadow-card-hover transition-all">
+              <motion.div
+                key={stop.id}
+                layout
+                initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -12 }}
+                transition={reduceMotion ? { duration: 0.15 } : springSettle}
+                className="gt-card p-0 overflow-hidden shadow-card hover:shadow-card-hover transition-shadow"
+              >
                 {/* Stop Header */}
                 <div
                   className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-5 sm:p-6 cursor-pointer hover:bg-surface-raised/60 transition-colors"
@@ -579,33 +618,36 @@ const ItineraryBuilder = () => {
                     {/* Segmented Reorder & Actions Group */}
                     {isOwner && (
                       <div className="inline-flex items-center bg-surface border border-border-light rounded-btn p-0.5 shadow-sm">
-                        <button
+                        <motion.button
                           onClick={(e) => handleReorderStop(index, 'up', e)}
                           disabled={index === 0}
-                          className="p-1.5 text-text-muted hover:text-text-main hover:bg-surface-raised rounded-md transition-all active:scale-[0.95] disabled:opacity-30 disabled:hover:bg-transparent"
+                          whileTap={reduceMotion ? {} : { scale: 0.9, transition: springSettle }}
+                          className="p-1.5 text-text-muted hover:text-text-main hover:bg-surface-raised rounded-md transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
                           title="Move Stop Up"
                           aria-label="Move stop up"
                         >
                           <ChevronUp className="w-4 h-4" />
-                        </button>
-                        <button
+                        </motion.button>
+                        <motion.button
                           onClick={(e) => handleReorderStop(index, 'down', e)}
                           disabled={index === trip.stops.length - 1}
-                          className="p-1.5 text-text-muted hover:text-text-main hover:bg-surface-raised rounded-md transition-all active:scale-[0.95] disabled:opacity-30 disabled:hover:bg-transparent"
+                          whileTap={reduceMotion ? {} : { scale: 0.9, transition: springSettle }}
+                          className="p-1.5 text-text-muted hover:text-text-main hover:bg-surface-raised rounded-md transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
                           title="Move Stop Down"
                           aria-label="Move stop down"
                         >
                           <ChevronDown className="w-4 h-4" />
-                        </button>
+                        </motion.button>
                         <div className="w-px h-4 bg-border-light my-auto mx-0.5" />
-                        <button
+                        <motion.button
                           onClick={() => setStopToDelete(stop.id)}
-                          className="p-1.5 text-danger hover:bg-danger/10 rounded-md transition-all active:scale-[0.95]"
+                          whileTap={reduceMotion ? {} : { scale: 0.9, transition: springSettle }}
+                          className="p-1.5 text-danger hover:bg-danger/10 rounded-md transition-colors"
                           title="Delete Stop"
                           aria-label="Delete stop"
                         >
                           <Trash2 className="w-4 h-4" />
-                        </button>
+                        </motion.button>
                       </div>
                     )}
 
@@ -613,10 +655,11 @@ const ItineraryBuilder = () => {
                       {stop.scheduledActivities?.length || 0} activities
                     </span>
 
-                    <button
+                    <motion.button
                       type="button"
                       onClick={() => toggleExpand(stop.id)}
-                      className="p-1.5 rounded-lg text-text-muted hover:text-text-main hover:bg-surface-raised transition-colors active:scale-[0.97]"
+                      whileTap={reduceMotion ? {} : { scale: 0.94, transition: springSettle }}
+                      className="p-1.5 rounded-lg text-text-muted hover:text-text-main hover:bg-surface-raised transition-colors"
                       aria-label={isExpanded ? 'Collapse stop' : 'Expand stop'}
                     >
                       <ChevronRight
@@ -624,18 +667,31 @@ const ItineraryBuilder = () => {
                           isExpanded ? 'rotate-90 text-accent' : 'text-text-muted'
                         }`}
                       />
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
 
                 {/* Expanded Content */}
+                <AnimatePresence initial={false}>
                 {isExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={reduceMotion ? { duration: 0.15 } : springSettle}
+                    className="overflow-hidden"
+                  >
                   <div className="border-t border-border-light p-5 sm:p-6 bg-surface-raised/30">
                     {/* Add Activity Frosted Glass Form Panel */}
+                    <AnimatePresence>
                     {activeActivityStopId === stop.id && isOwner && (
-                      <form
+                      <motion.form
                         onSubmit={(e) => handleAddActivitySubmit(e, stop.id)}
-                        className="gt-glass p-5 rounded-card border border-accent/30 space-y-4 mb-6 shadow-glass animate-fadeIn"
+                        initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.97 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.97 }}
+                        transition={reduceMotion ? { duration: 0.15 } : springSettle}
+                        className="gt-glass-panel p-5 rounded-card space-y-4 mb-6"
                       >
                         <div className="flex items-center justify-between border-b border-border-light pb-2.5">
                           <div className="flex items-center space-x-1.5">
@@ -721,24 +777,27 @@ const ItineraryBuilder = () => {
                           </div>
 
                           <div className="flex space-x-2.5 self-end sm:self-auto">
-                            <button
+                            <motion.button
                               type="button"
                               onClick={() => setActiveActivityStopId(null)}
+                              whileTap={reduceMotion ? {} : { scale: 0.97, transition: springSettle }}
                               className="px-4 py-2 text-xs font-semibold text-text-muted hover:text-text-main rounded-btn hover:bg-surface-raised transition-colors"
                             >
                               Cancel
-                            </button>
-                            <button
+                            </motion.button>
+                            <motion.button
                               type="submit"
                               disabled={isAddingActivity || !selectedActivity}
-                              className="px-5 py-2 text-xs font-bold bg-accent hover:bg-accent-hover text-white rounded-btn shadow-btn-accent active:scale-[0.97] transition-all disabled:opacity-50"
+                              whileTap={reduceMotion ? {} : { scale: 0.97, transition: springSettle }}
+                              className="px-5 py-2 text-xs font-bold bg-accent hover:bg-accent-hover text-white rounded-btn shadow-btn-accent transition-colors disabled:opacity-50"
                             >
                               {isAddingActivity ? 'Adding...' : 'Save Activity'}
-                            </button>
+                            </motion.button>
                           </div>
                         </div>
-                      </form>
+                      </motion.form>
                     )}
+                    </AnimatePresence>
 
                     {/* Day groups */}
                     {dayGroups.length === 0 ? (
@@ -796,24 +855,28 @@ const ItineraryBuilder = () => {
 
                     {/* Add Activity CTA Button */}
                     {isOwner && (
-                      <button
+                      <motion.button
                         onClick={() => {
                           setActiveActivityStopId(stop.id);
                           setSelectedActivity(null);
                           setActivityDate(stop.arrivalDate || '');
                           setActivitySearchResults(MOCK_ACTIVITIES);
                         }}
-                        className="mt-4 w-full py-3 rounded-btn border-2 border-dashed border-accent/40 text-accent font-bold text-xs sm:text-sm hover:border-accent hover:bg-accent-light/40 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                        whileTap={reduceMotion ? {} : { scale: 0.98, transition: springSettle }}
+                        className="mt-4 w-full py-3 rounded-btn border-2 border-dashed border-accent/40 text-accent font-bold text-xs sm:text-sm hover:border-accent hover:bg-accent-light/40 transition-colors flex items-center justify-center gap-1.5"
                       >
                         <Plus className="w-4 h-4" />
                         <span>Add Activity to {stop.city?.name}</span>
-                      </button>
+                      </motion.button>
                     )}
                   </div>
+                  </motion.div>
                 )}
-              </div>
+                </AnimatePresence>
+              </motion.div>
             );
           })}
+          </AnimatePresence>
         </div>
       )}
 
@@ -835,10 +898,10 @@ const ItineraryBuilder = () => {
             }`}
             aria-label="Toggle Public Status"
           >
-            <span
-              className={`inline-block h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-200 ${
-                trip.isPublic ? 'translate-x-6' : 'translate-x-1'
-              }`}
+            <motion.span
+              className="inline-block h-5 w-5 rounded-full bg-white shadow-md"
+              animate={{ x: trip.isPublic ? 24 : 4 }}
+              transition={reduceMotion ? { duration: 0.15 } : springSettle}
             />
           </button>
         </div>

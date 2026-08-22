@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PlusCircle, Sparkles, Star, ArrowRight } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { get } from '../api/client';
 import TripCard from '../components/TripCard';
@@ -12,6 +13,9 @@ import {
   REC_PHOTOS,
   TRIP_CARD_FALLBACK,
 } from '../constants/images';
+import {
+  springSettle, staggerContainer, fadeUpItem, getMotionProps,
+} from '../lib/motion';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -53,6 +57,9 @@ const Dashboard = () => {
 
   const recentTrips = trips.slice(0, 3);
   const firstName = user?.name?.split(' ')[0] || 'Traveler';
+  const reduceMotion = useReducedMotion();
+  const mountProps = getMotionProps(reduceMotion, 'mount');
+  const tapProps = reduceMotion ? {} : { whileTap: { scale: 0.97 }, transition: springSettle };
 
   return (
     <div className="page-enter min-h-screen bg-surface pt-20 pb-16">
@@ -81,7 +88,7 @@ const Dashboard = () => {
               </div>
 
               {/* Headline */}
-              <h1 className="text-display-md text-3xl sm:text-4xl font-extrabold text-white">
+              <h1 className="text-display-lg text-3xl sm:text-4xl font-extrabold text-white">
                 Welcome back, {firstName}! 👋
               </h1>
 
@@ -90,13 +97,15 @@ const Dashboard = () => {
               </p>
 
               <div className="pt-2">
-                <Link
-                  to="/trips/new"
-                  className="inline-flex items-center space-x-2 bg-accent hover:bg-accent-hover text-white font-bold text-sm px-6 py-3.5 rounded-btn shadow-btn-accent active:scale-[0.97] transition-all duration-150"
-                >
-                  <PlusCircle className="w-4 h-4" />
-                  <span>Plan New Trip</span>
-                </Link>
+                <motion.div className="inline-block" {...tapProps}>
+                  <Link
+                    to="/trips/new"
+                    className="inline-flex items-center space-x-2 bg-accent hover:bg-accent-hover text-white font-bold text-sm px-6 py-3.5 rounded-btn shadow-btn-accent transition-colors duration-150"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    <span>Plan New Trip</span>
+                  </Link>
+                </motion.div>
               </div>
             </div>
 
@@ -173,20 +182,27 @@ const Dashboard = () => {
               <p className="text-text-muted text-sm mb-6 max-w-sm mx-auto">
                 Start planning your first multi-city adventure.
               </p>
-              <button
+              <motion.button
                 onClick={() => navigate('/trips/new')}
-                className="bg-accent hover:bg-accent-hover text-white font-bold px-6 py-3 rounded-btn shadow-btn-accent active:scale-[0.97] transition-all duration-150 text-sm"
+                {...tapProps}
+                className="bg-accent hover:bg-accent-hover text-white font-bold px-6 py-3 rounded-btn shadow-btn-accent transition-colors duration-150 text-sm"
               >
                 Plan New Trip
-              </button>
+              </motion.button>
             </div>
           ) : (
             /* 3-Column Grid */
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <motion.div
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+              variants={staggerContainer}
+              {...mountProps}
+            >
               {recentTrips.map((trip) => (
-                <TripCard key={trip.id} trip={trip} onDelete={handleDeleteTrip} isOwner={true} />
+                <motion.div key={trip.id} variants={fadeUpItem}>
+                  <TripCard trip={trip} onDelete={handleDeleteTrip} isOwner={true} />
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           )}
         </section>
 
@@ -222,16 +238,22 @@ const Dashboard = () => {
               ))}
             </div>
           ) : (
-            <div className="flex space-x-4 overflow-x-auto no-scrollbar scroll-smooth pb-4 pt-1 px-1">
+            <motion.div
+              className="flex space-x-4 overflow-x-auto no-scrollbar scroll-smooth pb-4 pt-1 px-1"
+              variants={staggerContainer}
+              {...mountProps}
+            >
               {recData.recommendations?.map((rec, index) => {
                 const photo = rec.imageUrl || REC_PHOTOS[index % REC_PHOTOS.length];
                 const scorePercent = Math.min(100, Math.max(10, (rec.score || 0.9) * (rec.score > 1 ? 10 : 100)));
 
                 return (
-                  <button
+                  <motion.button
                     type="button"
                     key={rec.id || index}
                     onClick={() => navigate('/trips/new', { state: { cityName: rec.name } })}
+                    variants={fadeUpItem}
+                    whileTap={reduceMotion ? {} : { scale: 0.96, transition: springSettle }}
                     className="w-[210px] gt-card p-3.5 shrink-0 flex flex-col justify-between group text-left cursor-pointer"
                   >
                     <div>
@@ -277,10 +299,10 @@ const Dashboard = () => {
                         />
                       </div>
                     </div>
-                  </button>
+                  </motion.button>
                 );
               })}
-            </div>
+            </motion.div>
           )}
         </section>
       </div>
