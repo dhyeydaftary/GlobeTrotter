@@ -63,11 +63,9 @@ const CreateTrip = () => {
 
     try {
       const newTrip = await post('/trips', payload);
-      const newId = newTrip.id || 'trip_eu_2026';
-      navigate(`/trips/${newId}`);
-    } catch {
-      const mockId = 'trip_mock_' + Date.now();
-      navigate(`/trips/${mockId}`);
+      navigate(`/trips/${newTrip.id}`);
+    } catch (err) {
+      setError({ message: err.message || 'Failed to create trip.', code: err.code });
     } finally {
       setSaving(false);
     }
