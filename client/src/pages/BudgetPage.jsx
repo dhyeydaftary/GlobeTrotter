@@ -1,15 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, AlertTriangle, PieChart as PieIcon, BarChart as BarIcon, DollarSign } from 'lucide-react';
+import { ArrowLeft, Sparkles, AlertTriangle } from 'lucide-react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title } from 'chart.js';
 import { Pie, Bar } from 'react-chartjs-2';
 import { get } from '../api/client';
-import { MOCK_BUDGET, MOCK_TRIP_DETAIL } from '../api/mocks';
-import Skeleton from '../components/Skeleton';
+import { MOCK_BUDGET, MOCK_TRIP_DETAIL, withMockFallback } from '../api/mocks';
 import ErrorBanner from '../components/ErrorBanner';
+import EmptyState from '../components/EmptyState';
 
-// Register Chart.js modules
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title);
+
+const categoryColors = {
+  transport: '#5B5BF6',
+  stay: '#0EA5E9',
+  activities: '#E5484D',
+  meals: '#1FAE7A',
+};
 
 const BudgetPage = () => {
   const { id } = useParams();
@@ -22,18 +28,13 @@ const BudgetPage = () => {
     setLoading(true);
     setError(null);
     try {
-      let bData = null;
-      let tData = null;
-      try {
-        bData = await get(`/trips/${id}/budget`);
-        tData = await get(`/trips/${id}`);
-      } catch {
-        bData = MOCK_BUDGET;
-        tData = MOCK_TRIP_DETAIL;
-      }
+      const [bData, tData] = await Promise.all([
+        withMockFallback(() => get(`/trips/${id}/budget`), MOCK_BUDGET),
+        withMockFallback(() => get(`/trips/${id}`), MOCK_TRIP_DETAIL),
+      ]);
 
-      setBudget(bData || MOCK_BUDGET);
-      setTrip(tData || MOCK_TRIP_DETAIL);
+      setBudget(bData);
+      setTrip(tData);
     } catch (err) {
       setError({
         message: err.message || 'Failed to fetch budget details.',
@@ -48,213 +49,179 @@ const BudgetPage = () => {
     fetchBudgetData();
   }, [fetchBudgetData]);
 
-  if (loading) return <Skeleton type="itinerary" />;
+  if (loading) {
+    return (
+      <div className="page-enter max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pt-24 space-y-6">
+        <div className="skeleton h-24 w-full rounded-card" />
+        <div className="skeleton h-64 w-full rounded-card" />
+      </div>
+    );
+  }
+
   if (!budget) return <ErrorBanner message="Budget data unavailable." onRetry={fetchBudgetData} />;
 
-  // Category Pie Chart Data & Colors
-  const categoryLabels = ['Transport', 'Stay', 'Activities', 'Meals'];
-  const categoryValues = [
-    budget.byCategory?.transport || 0,
-    budget.byCategory?.stay || 0,
-    budget.byCategory?.activities || 0,
-    budget.byCategory?.meals || 0,
-  ];
-  const categoryColors = ['#1E3A5F', '#3B82F6', '#FF6B6B', '#10B981'];
-  const totalCalculated = categoryValues.reduce((a, b) => a + b, 0) || budget.total || 1;
-
-  const pieChartData = {
-    labels: categoryLabels,
+  // Chart configs
+  const pieData = {
+    labels: ['Transport', 'Stay', 'Activities', 'Meals'],
     datasets: [
       {
-        data: categoryValues,
-        backgroundColor: categoryColors,
+        data: [
+          budget.byCategory?.transport || 0,
+          budget.byCategory?.stay || 0,
+          budget.byCategory?.activities || 0,
+          budget.byCategory?.meals || 0,
+        ],
+        backgroundColor: ['#5B5BF6', '#0EA5E9', '#E5484D', '#1FAE7A'],
         borderWidth: 2,
         borderColor: '#FFFFFF',
       },
     ],
   };
 
-  const pieChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: {
-          label: (context) => ` ₹${context.raw.toFixed(2)}`,
-        },
-      },
-    },
-  };
-
-  // Daily Spend Bar Chart Data
-  const dailyLabels = (budget.byDay || []).map((d) => d.date);
-  const dailyValues = (budget.byDay || []).map((d) => d.total);
-
-  const barChartData = {
-    labels: dailyLabels,
+  const barData = {
+    labels: (budget.byDay || []).map((d) => d.date),
     datasets: [
       {
         label: 'Daily Spend (₹)',
-        data: dailyValues,
+        data: (budget.byDay || []).map((d) => d.total),
         backgroundColor: (budget.byDay || []).map((d) =>
-          budget.overBudgetDays?.includes(d.date) ? '#F59E0B' : '#1E3A5F'
+          budget.overBudgetDays?.includes(d.date) ? '#E0A930' : '#5B5BF6'
         ),
         borderRadius: 8,
       },
     ],
   };
 
-  const barChartOptions = {
+  const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: {
-          label: (context) => ` Spend: ₹${context.raw.toFixed(2)}`,
+      legend: {
+        position: 'bottom',
+        labels: {
+          font: { family: 'Inter', size: 12 },
+          color: '#6B6B7B',
+          padding: 16,
         },
       },
-    },
-    scales: {
-      x: {
-        grid: { display: false },
-        ticks: { font: { family: 'Inter', size: 11 } },
-      },
-      y: {
-        grid: { color: '#E5E7EB' },
-        ticks: { font: { family: 'Inter', size: 11 } },
+      tooltip: {
+        backgroundColor: '#15161F',
+        titleFont: { family: 'Plus Jakarta Sans', size: 13, weight: 'bold' },
+        bodyFont: { family: 'Inter', size: 12 },
+        padding: 12,
+        cornerRadius: 10,
       },
     },
   };
 
-  const hasOverBudgetDays = budget.overBudgetDays && budget.overBudgetDays.length > 0;
+  const hasCosts =
+    (Number(budget.total) || 0) > 0 ||
+    (budget.byDay || []).some((d) => Number(d.total) > 0) ||
+    Object.values(budget.byCategory || {}).some((n) => Number(n) > 0);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Top Header */}
+    <div className="page-enter max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pt-24 pb-16 space-y-6">
       <div>
         <Link
           to={`/trips/${id}`}
-          className="inline-flex items-center space-x-1.5 text-xs font-semibold text-textMuted hover:text-primary transition-colors mb-3"
+          className="inline-flex items-center space-x-1.5 text-xs font-semibold text-text-muted hover:text-text-main transition-colors mb-3"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Itinerary Builder</span>
+          <span>Back to Itinerary Builder ({trip?.name || 'Trip'})</span>
         </Link>
-        <h1 className="text-3xl font-extrabold text-textMain tracking-tight font-display">
-          Trip Budget Breakdown
-        </h1>
-        <p className="text-sm text-textMuted mt-1">
-          {trip?.name || 'Multi-city Trip'} • Financial analytics & category expense tracking
-        </p>
       </div>
 
       <ErrorBanner message={error?.message} code={error?.code} onRetry={fetchBudgetData} onClose={() => setError(null)} />
 
-      {/* Large Total Budget Metric Card: font-size 3rem, font-weight 800, color #1E3A5F, currency prefix ₹ in coral */}
-      <div className="bg-surface-card rounded-card p-6 sm:p-8 shadow-card border border-borderLight flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <span className="text-xs font-extrabold uppercase tracking-wider text-textMuted">
-            Total Trip Expenditure
-          </span>
-          <div className="flex items-baseline space-x-2 mt-1">
-            <span className="text-3xl sm:text-4xl font-extrabold text-accent font-display">₹</span>
-            <span className="text-[3rem] font-extrabold text-primary font-display tracking-tight leading-none">
-              {(budget.total || totalCalculated).toLocaleString('en-IN', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-2 bg-slate-50 px-4 py-3 rounded-btn border border-borderLight">
-          <DollarSign className="w-5 h-5 text-accent" />
-          <span className="text-xs font-semibold text-slate-700">
-            {categoryValues.filter((v) => v > 0).length} Categories Active
-          </span>
-        </div>
-      </div>
-
-      {/* Over-Budget Banner: background: #FFFBEB, border-left: 4px solid #F59E0B, padding: 16px (p-4), border-radius: 8px (rounded-lg). Render ONLY if non-empty! */}
-      {hasOverBudgetDays && (
-        <div className="bg-[#FFFBEB] border-l-4 border-[#F59E0B] p-4 rounded-lg shadow-sm flex items-start space-x-3 text-amber-900 animate-fade-in">
-          <AlertTriangle className="w-5 h-5 text-[#F59E0B] shrink-0 mt-0.5" />
-          <div>
-            <h4 className="font-extrabold text-sm text-amber-950">Over Budget Alert</h4>
-            <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
-              Target daily budget limits were exceeded on:{' '}
-              <span className="font-bold underline">
-                {budget.overBudgetDays.join(', ')}
-              </span>
+      {!hasCosts ? (
+        <EmptyState
+          title="No scheduled costs yet"
+          description="Schedule activities and add stay or transport estimates in your itinerary builder to generate a live budget breakdown."
+          action={
+            <Link
+              to={`/trips/${id}`}
+              className="inline-flex bg-accent hover:bg-accent-hover text-white font-bold px-6 py-3 rounded-btn shadow-btn-accent active:scale-[0.97] transition-all text-xs sm:text-sm"
+            >
+              Add Activities
+            </Link>
+          }
+        />
+      ) : (
+        <>
+          {/* Total Header Card */}
+          <div className="gt-card p-8 text-center space-y-2">
+            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-accent-light text-accent text-xs font-bold">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Live Expense Tracking</span>
+            </div>
+            <p className="text-text-muted text-xs sm:text-sm font-semibold uppercase tracking-wider">
+              Total Trip Cost
+            </p>
+            <p className="text-display-lg font-extrabold text-text-main" style={{ fontSize: 'clamp(2.5rem, 6vw, 3.8rem)' }}>
+              <span className="text-accent">₹</span>
+              {budget.total?.toLocaleString('en-IN')}
             </p>
           </div>
-        </div>
-      )}
 
-      {/* Charts Grid — White cards with titles, p-6, shadow, border-radius: 16px */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Pie Chart Card (Explicit Height: 300px) */}
-        <div className="bg-surface-card rounded-card p-6 shadow-card border border-borderLight flex flex-col justify-between">
-          <div>
-            <div className="flex items-center space-x-2 mb-4">
-              <PieIcon className="w-5 h-5 text-accent" />
-              <h3 className="text-lg font-bold text-textMain font-display">
-                Expense by Category
-              </h3>
+          {/* Over Budget Alert */}
+          {budget.overBudgetDays?.length > 0 && (
+            <div className="flex items-start gap-3 p-4 rounded-card border border-warning/30 bg-warning/10 text-text-main">
+              <AlertTriangle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-text-main text-sm">Over budget on some days</p>
+                <p className="text-text-muted text-xs sm:text-sm mt-0.5">{budget.overBudgetDays.join(', ')}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Charts Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Pie Chart */}
+            <div className="gt-card p-6">
+              <h3 className="text-display-md font-bold text-text-main text-base mb-4">Cost by Category</h3>
+              <div style={{ height: '260px', position: 'relative' }}>
+                <Pie data={pieData} options={chartOptions} />
+              </div>
             </div>
 
-            {/* Explicit 300px height container */}
-            <div className="h-[300px] w-full relative">
-              <Pie data={pieChartData} options={pieChartOptions} />
+            {/* Bar Chart */}
+            <div className="gt-card p-6">
+              <h3 className="text-display-md font-bold text-text-main text-base mb-4">Daily Spend Overview</h3>
+              <div style={{ height: '260px', position: 'relative' }}>
+                <Bar
+                  data={barData}
+                  options={{
+                    ...chartOptions,
+                    plugins: { ...chartOptions.plugins, legend: { display: false } },
+                  }}
+                />
+              </div>
             </div>
           </div>
 
-          {/* 2-Column Custom Category Legend */}
-          <div className="mt-6 pt-4 border-t border-borderLight grid grid-cols-2 gap-3">
-            {categoryLabels.map((label, idx) => {
-              const val = categoryValues[idx];
-              const pct = ((val / totalCalculated) * 100).toFixed(1);
-
-              return (
-                <div key={label} className="flex items-center space-x-2.5 text-xs">
-                  <span
-                    className="w-3 h-3 rounded-full shrink-0 shadow-sm"
-                    style={{ backgroundColor: categoryColors[idx] }}
+          {/* Category Breakdown List */}
+          <div className="gt-card p-6 sm:p-7">
+            <h3 className="text-display-md font-bold text-text-main text-base mb-4">Detailed Breakdown</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {Object.entries(budget.byCategory || {}).map(([cat, amount]) => (
+                <div key={cat} className="flex items-center gap-3 p-3.5 rounded-xl bg-surface-raised border border-border-light">
+                  <div
+                    className="w-3.5 h-3.5 rounded-full flex-shrink-0"
+                    style={{ background: categoryColors[cat] || '#5B5BF6' }}
                   />
-                  <div className="min-w-0">
-                    <p className="font-bold text-textMain truncate">{label}</p>
-                    <p className="text-[11px] text-textMuted">
-                      ₹{val.toFixed(2)} ({pct}%)
-                    </p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-text-main capitalize">{cat}</p>
+                    <p className="text-xs text-text-muted">₹{amount?.toLocaleString('en-IN')}</p>
                   </div>
+                  <span className="text-xs sm:text-sm font-bold text-text-main bg-white px-2.5 py-1 rounded-full border border-border-light shadow-sm">
+                    {budget.total ? Math.round((amount / budget.total) * 100) : 0}%
+                  </span>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Bar Chart Card (Explicit Height: 280px) */}
-        <div className="bg-surface-card rounded-card p-6 shadow-card border border-borderLight flex flex-col justify-between">
-          <div>
-            <div className="flex items-center space-x-2 mb-4">
-              <BarIcon className="w-5 h-5 text-primary" />
-              <h3 className="text-lg font-bold text-textMain font-display">
-                Daily Spend Timeline
-              </h3>
-            </div>
-
-            {/* Explicit 280px height container */}
-            <div className="h-[280px] w-full relative">
-              <Bar data={barChartData} options={barChartOptions} />
+              ))}
             </div>
           </div>
-
-          <div className="mt-4 text-[11px] text-textMuted text-center">
-            * Amber bars indicate dates exceeding target daily limits.
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 };

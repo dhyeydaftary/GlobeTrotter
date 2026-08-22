@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Image as ImageIcon, Trash2, AlertTriangle, X, Check, Save, Heart } from 'lucide-react';
+import { Sparkles, MapPin, Trash2, Check } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { get, patch, del } from '../api/client';
 import { MOCK_USER, MOCK_CITIES } from '../api/mocks';
-import Skeleton from '../components/Skeleton';
 import ErrorBanner from '../components/ErrorBanner';
 
 const ProfilePage = () => {
@@ -15,17 +14,16 @@ const ProfilePage = () => {
   const [email, setEmail] = useState(user?.email || '');
   const [photoUrl, setPhotoUrl] = useState(user?.photoUrl || '');
   const [savedDestinations, setSavedDestinations] = useState([]);
-  const [removingCityId, setRemovingCityId] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState(null);
 
-  // Delete Account Modal state
+  // Delete modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteInput, setDeleteInput] = useState('');
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const fetchProfileData = useCallback(async () => {
     setLoading(true);
@@ -59,7 +57,6 @@ const ProfilePage = () => {
     fetchProfileData();
   }, [fetchProfileData]);
 
-  // Handle Save Profile
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -85,240 +82,204 @@ const ProfilePage = () => {
     }
   };
 
-  // Handle Remove Saved Destination with 200ms fade-out
-  const handleRemoveDestination = async (cityId) => {
-    setRemovingCityId(cityId);
-
-    setTimeout(async () => {
-      try {
-        await del(`/users/me/saved-destinations/${cityId}`);
-      } catch {}
-      setSavedDestinations((prev) => prev.filter((item) => (item.cityId || item.city?.id || item.id) !== cityId));
-      setRemovingCityId(null);
-    }, 200);
+  const handleRemoveDest = async (cityId) => {
+    try {
+      await del(`/users/me/saved-destinations/${cityId}`);
+    } catch {}
+    setSavedDestinations((prev) =>
+      prev.filter((item) => (item.cityId || item.city?.id || item.id) !== cityId)
+    );
   };
 
-  // Handle Confirm Delete Account
-  const handleConfirmDeleteAccount = async () => {
-    if (deleteInput !== 'DELETE') return;
-    setIsDeletingAccount(true);
-
+  const handleDeleteAccount = async () => {
+    if (deleteConfirm !== 'DELETE') return;
+    setDeletingAccount(true);
     try {
       await del('/users/me');
     } catch {}
-
     logout();
     navigate('/login');
   };
 
-  if (loading) return <Skeleton type="itinerary" />;
+  if (loading) {
+    return (
+      <div className="page-enter max-w-2xl mx-auto px-4 py-10 pt-24 space-y-6">
+        <div className="skeleton h-10 w-48 rounded-md" />
+        <div className="skeleton h-64 w-full rounded-card" />
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
+    <div className="page-enter max-w-2xl mx-auto px-4 py-10 pt-24 pb-16 space-y-6">
       <div>
-        <h1 className="text-3xl font-extrabold text-textMain tracking-tight font-display">
-          Account Profile
+        <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-accent-light text-accent text-xs font-semibold mb-2">
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Account Settings</span>
+        </div>
+        <h1 className="text-display-md text-2xl sm:text-3xl font-extrabold text-text-main">
+          Profile & Preferences
         </h1>
-        <p className="text-sm text-textMuted mt-1">
-          Manage your personal details and saved destinations
-        </p>
       </div>
 
       <ErrorBanner message={error?.message} code={error?.code} onRetry={fetchProfileData} onClose={() => setError(null)} />
 
       {saveSuccess && (
-        <div className="bg-emerald-50 border-l-4 border-success text-emerald-900 p-4 rounded-r-card shadow-sm flex items-center space-x-3 animate-fade-in">
-          <Check className="w-5 h-5 text-success shrink-0" />
-          <span className="text-sm font-semibold">Profile details updated successfully!</span>
+        <div className="p-3.5 rounded-card bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-semibold flex items-center gap-2">
+          <Check className="w-4 h-4 text-emerald-600" />
+          <span>Profile changes saved successfully!</span>
         </div>
       )}
 
-      {/* Editable Form */}
-      <form
-        onSubmit={handleSaveProfile}
-        className="bg-surface-card rounded-card p-6 sm:p-8 shadow-card border border-borderLight space-y-6"
-      >
-        <h2 className="text-xl font-bold text-textMain font-display border-b border-borderLight pb-3">
-          Personal Details
-        </h2>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      {/* Profile Card */}
+      <div className="gt-card p-6 sm:p-8">
+        {/* Avatar & Header */}
+        <div className="flex items-center gap-4 sm:gap-5 mb-6 pb-6 border-b border-border-light">
+          {photoUrl ? (
+            <img
+              src={photoUrl}
+              alt=""
+              className="w-16 h-16 rounded-2xl object-cover ring-2 ring-accent/30 flex-shrink-0"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-2xl bg-accent-light text-accent border border-accent/20 flex items-center justify-center font-extrabold text-2xl flex-shrink-0">
+              {user?.name?.charAt(0).toUpperCase() || 'U'}
+            </div>
+          )}
           <div>
-            <label className="block text-xs font-semibold text-textMain uppercase tracking-wider mb-2">
+            <p className="text-display-md font-bold text-lg sm:text-xl text-text-main">{user?.name}</p>
+            <p className="text-text-muted text-xs sm:text-sm">{user?.email}</p>
+          </div>
+        </div>
+
+        {/* Form Fields */}
+        <form onSubmit={handleSaveProfile} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-text-main uppercase tracking-wider mb-1.5">
               Full Name
             </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <User className="w-5 h-5" />
-              </div>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="block w-full pl-11 pr-4 py-3 border border-borderLight rounded-input text-sm bg-slate-50/50"
-              />
-            </div>
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-4 py-3 rounded-btn border border-border-light bg-surface text-text-main text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+            />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-textMain uppercase tracking-wider mb-2">
+            <label className="block text-xs font-bold text-text-main uppercase tracking-wider mb-1.5">
               Email Address
             </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <Mail className="w-5 h-5" />
-              </div>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="block w-full pl-11 pr-4 py-3 border border-borderLight rounded-input text-sm bg-slate-50/50"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-textMain uppercase tracking-wider mb-2">
-            Avatar Image URL
-          </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-              <ImageIcon className="w-5 h-5" />
-            </div>
             <input
-              type="url"
-              value={photoUrl}
-              onChange={(e) => setPhotoUrl(e.target.value)}
-              className="block w-full pl-11 pr-4 py-3 border border-borderLight rounded-input text-sm bg-slate-50/50"
-              placeholder="https://images.unsplash.com/photo-..."
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 rounded-btn border border-border-light bg-surface text-text-main text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
             />
           </div>
-        </div>
 
-        <div className="flex justify-end pt-2">
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex items-center space-x-2 bg-primary hover:bg-primary-light text-white text-xs font-bold px-6 py-3 rounded-btn shadow-md hover:scale-[1.02] transition-all disabled:opacity-50"
-          >
-            <Save className="w-4 h-4" />
-            <span>{saving ? 'Saving...' : 'Save Profile'}</span>
-          </button>
-        </div>
-      </form>
-
-      {/* Saved Destinations Section */}
-      <div className="bg-surface-card rounded-card p-6 sm:p-8 shadow-card border border-borderLight space-y-4">
-        <div className="flex items-center space-x-2 border-b border-borderLight pb-3">
-          <Heart className="w-5 h-5 text-accent fill-accent" />
-          <h2 className="text-xl font-bold text-textMain font-display">Saved Destinations</h2>
-        </div>
-
-        {savedDestinations.length === 0 ? (
-          <p className="text-xs text-textMuted italic">No saved destinations yet.</p>
-        ) : (
-          <div className="flex flex-wrap gap-2.5 pt-1">
-            {savedDestinations.map((item) => {
-              const cityId = item.cityId || item.city?.id || item.id;
-              const cityName = item.city?.name || item.cityName || 'City';
-              const country = item.city?.country || item.country || '';
-              const isRemoving = removingCityId === cityId;
-
-              return (
-                <span
-                  key={cityId}
-                  className={`inline-flex items-center space-x-2 bg-slate-100 text-slate-800 text-xs font-semibold px-3 py-1.5 rounded-full border border-borderLight shadow-sm transition-all duration-200 ${
-                    isRemoving ? 'opacity-0 scale-90' : 'opacity-100 scale-100'
-                  }`}
-                >
-                  <span>
-                    {cityName}
-                    {country && `, ${country}`}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveDestination(cityId)}
-                    className="text-slate-400 hover:text-rose-600 transition-colors p-0.5 rounded-full"
-                    title="Remove destination"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </span>
-              );
-            })}
+          <div>
+            <label className="block text-xs font-bold text-text-main uppercase tracking-wider mb-1.5">
+              Avatar Image URL <span className="text-text-light font-normal normal-case">(optional)</span>
+            </label>
+            <input
+              type="url"
+              placeholder="https://..."
+              value={photoUrl}
+              onChange={(e) => setPhotoUrl(e.target.value)}
+              className="w-full px-4 py-3 rounded-btn border border-border-light bg-surface text-text-main text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+            />
           </div>
-        )}
+
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="bg-accent hover:bg-accent-hover text-white font-bold px-6 py-3 rounded-btn shadow-btn-accent active:scale-[0.97] transition-all text-xs sm:text-sm disabled:opacity-50"
+            >
+              {saving ? 'Saving changes...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
       </div>
 
-      {/* Danger Zone: Delete Account */}
-      <div className="bg-rose-50/60 border border-rose-200 rounded-card p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h3 className="text-base font-extrabold text-rose-950 font-display">Delete Account</h3>
-          <p className="text-xs text-rose-700 mt-1 max-w-md leading-relaxed">
-            Permanently delete your GlobeTrotter profile and all associated multi-city trips. This action cannot be undone.
-          </p>
+      {/* Saved Destinations */}
+      <div className="gt-card p-6 sm:p-7">
+        <h3 className="text-display-md font-bold text-text-main text-base mb-3">Saved Destinations</h3>
+        <div className="flex flex-wrap gap-2">
+          {savedDestinations.map((dest) => {
+            const cityId = dest.city?.id || dest.cityId || dest.id;
+            const cityName = dest.city?.name || dest.cityName || 'City';
+            return (
+              <span
+                key={cityId}
+                className="inline-flex items-center gap-1.5 bg-surface border border-border-light hover:border-accent/40 text-text-main text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
+              >
+                <MapPin className="w-3 h-3 text-accent" />
+                <span>{cityName}</span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveDest(cityId)}
+                  className="text-text-muted hover:text-danger transition-colors ml-1 font-bold text-sm leading-none"
+                  aria-label={`Remove ${cityName}`}
+                >
+                  ×
+                </button>
+              </span>
+            );
+          })}
+          {savedDestinations.length === 0 && (
+            <p className="text-text-muted text-xs sm:text-sm">No saved destinations yet.</p>
+          )}
         </div>
+      </div>
 
+      {/* Danger Zone */}
+      <div className="gt-card p-6 border-danger/20 bg-danger/[0.02]">
+        <h3 className="text-display-md font-bold text-danger text-base mb-1">Danger Zone</h3>
+        <p className="text-text-muted text-xs sm:text-sm mb-4 leading-relaxed">
+          Permanently delete your account and all your trips. This action cannot be reversed.
+        </p>
         <button
           type="button"
-          onClick={() => {
-            setShowDeleteModal(true);
-            setDeleteInput('');
-          }}
-          className="inline-flex items-center space-x-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-4 py-2.5 rounded-btn shadow-md shrink-0 transition-all"
+          onClick={() => setShowDeleteModal(true)}
+          className="bg-white text-danger font-bold px-4 py-2.5 rounded-btn border border-danger/30 hover:bg-danger hover:text-white active:scale-[0.97] transition-all text-xs"
         >
-          <Trash2 className="w-4 h-4" />
-          <span>Delete Account</span>
+          Delete Account
         </button>
       </div>
 
-      {/* Real Confirm Delete Account Modal */}
+      {/* Delete Confirm Modal with Frosted Glass Scrim */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-surface-card rounded-card max-w-md w-full p-6 shadow-2xl border border-borderLight space-y-5">
-            <div className="flex items-center space-x-3 text-rose-600">
-              <div className="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-6 h-6 text-rose-600" />
-              </div>
-              <h3 className="text-lg font-extrabold text-slate-900 font-display">
-                Confirm Account Deletion
-              </h3>
-            </div>
-
-            <p className="text-xs text-slate-600 leading-relaxed">
-              This will permanently delete your account and all your planned trips. To confirm, please type{' '}
-              <span className="font-mono font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded">
-                DELETE
-              </span>{' '}
-              below:
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-surface-card rounded-card border border-border-light p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-4 animate-scaleIn">
+            <h3 className="text-display-md font-bold text-lg text-text-main">Delete Account</h3>
+            <p className="text-text-muted text-xs sm:text-sm leading-relaxed">
+              Type <strong className="text-text-main font-bold">DELETE</strong> to confirm permanent removal of your account and all itineraries.
             </p>
-
             <input
               type="text"
-              value={deleteInput}
-              onChange={(e) => setDeleteInput(e.target.value)}
-              placeholder="Type DELETE"
-              className="block w-full px-3.5 py-2.5 border border-borderLight rounded-input text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rose-500"
+              placeholder="Type DELETE to confirm"
+              onChange={(e) => setDeleteConfirm(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-btn border border-border-light bg-surface text-sm focus:outline-none focus:border-danger focus:ring-2 focus:ring-danger/20"
             />
-
-            <div className="flex justify-end space-x-3 pt-2">
+            <div className="flex gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-btn"
+                className="flex-1 py-2.5 rounded-btn border border-border-light text-text-muted font-semibold text-xs hover:bg-surface-raised hover:text-text-main active:scale-[0.97] transition-all"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                disabled={deleteInput !== 'DELETE' || isDeletingAccount}
-                onClick={handleConfirmDeleteAccount}
-                className="px-5 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-btn shadow-sm disabled:opacity-40 transition-all"
+                onClick={handleDeleteAccount}
+                disabled={deleteConfirm !== 'DELETE' || deletingAccount}
+                className="flex-1 py-2.5 rounded-btn bg-danger text-white font-bold text-xs hover:bg-red-600 active:scale-[0.97] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {isDeletingAccount ? 'Deleting...' : 'Permanently Delete'}
+                {deletingAccount ? 'Deleting...' : 'Delete Forever'}
               </button>
             </div>
           </div>

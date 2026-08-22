@@ -1,30 +1,35 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Calendar as CalendarIcon, List, Clock, ArrowLeft } from 'lucide-react';
+import { Calendar as CalendarIcon, List, Clock, ArrowLeft, Sparkles, MapPin } from 'lucide-react';
 import { get } from '../api/client';
-import { MOCK_TRIP_DETAIL } from '../api/mocks';
+import { MOCK_TRIP_DETAIL, MOCK_BUDGET, withMockFallback } from '../api/mocks';
 import Skeleton from '../components/Skeleton';
 import ErrorBanner from '../components/ErrorBanner';
+import ItineraryCalendar from '../components/ItineraryCalendar';
+
+function activityCost(act) {
+  if (act.costOverride !== null && act.costOverride !== undefined) return Number(act.costOverride);
+  return Number(act.cost) || 0;
+}
 
 const ItineraryView = () => {
   const { id } = useParams();
   const [trip, setTrip] = useState(null);
+  const [budget, setBudget] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('list'); // 'list' | 'calendar'
+  const [activeTab, setActiveTab] = useState('list');
 
   const fetchTrip = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      let fetchedTrip = null;
-      try {
-        fetchedTrip = await get(`/trips/${id}`);
-      } catch {
-        fetchedTrip = MOCK_TRIP_DETAIL;
-      }
-
+      const [fetchedTrip, fetchedBudget] = await Promise.all([
+        withMockFallback(() => get(`/trips/${id}`), MOCK_TRIP_DETAIL),
+        withMockFallback(() => get(`/trips/${id}/budget`), MOCK_BUDGET),
+      ]);
       setTrip(fetchedTrip);
+      setBudget(fetchedBudget);
     } catch (err) {
       setError({
         message: err.message || 'Failed to load trip view.',
@@ -39,11 +44,8 @@ const ItineraryView = () => {
     fetchTrip();
   }, [fetchTrip]);
 
-  if (loading) return <Skeleton type="itinerary" />;
-  if (!trip) return <ErrorBanner message="Trip not found." onRetry={fetchTrip} />;
-
-  // Helper to construct day-by-day sequence
-  const buildDayWiseItinerary = () => {
+  const dayWiseList = useMemo(() => {
+    if (!trip) return [];
     const daysMap = {};
     let dayCount = 1;
 
@@ -57,24 +59,43 @@ const ItineraryView = () => {
             date: dateKey,
             cityName,
             activities: [],
+            spend: 0,
           };
         }
         daysMap[dateKey].activities.push(act);
+        daysMap[dateKey].spend += activityCost(act);
       });
     });
 
     return Object.values(daysMap);
-  };
+  }, [trip]);
 
-  const dayWiseList = buildDayWiseItinerary();
+  const overBudgetDates = useMemo(() => {
+    const set = new Set(budget?.overBudgetDays || []);
+    const threshold = trip?.dailyBudgetThreshold;
+    if (threshold) {
+      dayWiseList.forEach((day) => {
+        if (day.date !== 'Unscheduled' && day.spend > threshold) set.add(day.date);
+      });
+    }
+    return set;
+  }, [budget, trip, dayWiseList]);
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
+        <Skeleton type="itinerary" />
+      </div>
+    );
+  }
+  if (!trip) return <ErrorBanner message="Trip not found." onRetry={fetchTrip} />;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Top Header */}
+    <div className="page-enter max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 pb-16 space-y-8">
       <div>
         <Link
           to={`/trips/${trip.id}`}
-          className="inline-flex items-center space-x-1.5 text-xs font-semibold text-textMuted hover:text-primary transition-colors mb-3"
+          className="inline-flex items-center space-x-1.5 text-xs font-semibold text-text-muted hover:text-text-main transition-colors mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Itinerary Builder</span>
@@ -82,8 +103,14 @@ const ItineraryView = () => {
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold text-textMain tracking-tight font-display">{trip.name}</h1>
-            <p className="text-sm text-textMuted mt-1 flex items-center space-x-2">
+            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-accent-light text-accent text-xs font-semibold mb-2">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Itinerary Timeline</span>
+            </div>
+            <h1 className="text-display-md text-2xl sm:text-3xl font-extrabold text-text-main">
+              {trip.name}
+            </h1>
+            <p className="text-sm text-text-muted mt-1 flex items-center space-x-2">
               <CalendarIcon className="w-4 h-4 text-accent" />
               <span>
                 {trip.startDate} – {trip.endDate}
@@ -91,14 +118,14 @@ const ItineraryView = () => {
             </p>
           </div>
 
-          {/* List / Calendar Toggle */}
-          <div className="bg-slate-200/70 p-1 rounded-xl flex items-center space-x-1 self-start md:self-auto">
+          {/* List vs Calendar Toggle */}
+          <div className="bg-surface-raised border border-border-light p-1 rounded-btn flex items-center space-x-1 self-start md:self-auto shadow-sm">
             <button
               onClick={() => setActiveTab('list')}
-              className={`inline-flex items-center space-x-1.5 text-xs font-bold px-3.5 py-2 rounded-lg transition-all ${
+              className={`inline-flex items-center space-x-1.5 text-xs font-bold px-3.5 py-2 rounded-lg transition-all active:scale-[0.97] ${
                 activeTab === 'list'
-                  ? 'bg-white text-primary shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-accent shadow-sm'
+                  : 'text-text-muted hover:text-text-main'
               }`}
             >
               <List className="w-4 h-4" />
@@ -106,10 +133,10 @@ const ItineraryView = () => {
             </button>
             <button
               onClick={() => setActiveTab('calendar')}
-              className={`inline-flex items-center space-x-1.5 text-xs font-bold px-3.5 py-2 rounded-lg transition-all ${
+              className={`inline-flex items-center space-x-1.5 text-xs font-bold px-3.5 py-2 rounded-lg transition-all active:scale-[0.97] ${
                 activeTab === 'calendar'
-                  ? 'bg-white text-primary shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white text-accent shadow-sm'
+                  : 'text-text-muted hover:text-text-main'
               }`}
             >
               <CalendarIcon className="w-4 h-4" />
@@ -121,90 +148,82 @@ const ItineraryView = () => {
 
       <ErrorBanner message={error?.message} code={error?.code} onRetry={fetchTrip} onClose={() => setError(null)} />
 
-      {/* View Content */}
-      {activeTab === 'calendar' ? (
-        <div className="bg-surface-card border-2 border-dashed border-borderLight rounded-card p-12 text-center space-y-3">
-          <div className="w-12 h-12 bg-amber-50 rounded-full flex items-center justify-center mx-auto text-amber-600">
-            <CalendarIcon className="w-6 h-6" />
+      {overBudgetDates.size > 0 && (
+        <div className="flex items-start gap-3 p-4 rounded-card border border-warning/30 bg-warning/10 text-text-main">
+          <span className="text-warning text-lg font-bold">⚠</span>
+          <div>
+            <p className="font-bold text-text-main text-sm">
+              Over the daily budget{trip.dailyBudgetThreshold ? ` (₹${trip.dailyBudgetThreshold})` : ''}
+            </p>
+            <p className="text-text-muted text-xs sm:text-sm mt-0.5">
+              {Array.from(overBudgetDates).join(', ')}
+            </p>
           </div>
-          <h3 className="text-lg font-bold text-textMain">Calendar View Coming Soon</h3>
-          <p className="text-xs text-textMuted max-w-sm mx-auto">
-            Interactive drag-and-drop calendar matrix is currently in development for a future release.
-          </p>
-          <button
-            onClick={() => setActiveTab('list')}
-            className="mt-2 text-xs font-bold text-primary hover:underline"
-          >
-            Switch back to List View &rarr;
-          </button>
         </div>
+      )}
+
+      {activeTab === 'calendar' ? (
+        <ItineraryCalendar days={dayWiseList} overBudgetDates={overBudgetDates} />
       ) : (
         <div className="space-y-8">
           {dayWiseList.length === 0 ? (
-            <div className="bg-surface-card border border-borderLight rounded-card p-8 text-center text-textMuted">
+            <div className="gt-card p-10 text-center text-text-muted">
               No scheduled activities to display in this itinerary yet.
             </div>
           ) : (
             dayWiseList.map((dayItem) => {
-              const dateFormatted = new Date(dayItem.date).toLocaleDateString('en-US', {
-                month: 'long',
-                day: 'numeric',
-              });
+              const dateFormatted =
+                dayItem.date === 'Unscheduled'
+                  ? 'Unscheduled'
+                  : new Date(dayItem.date).toLocaleDateString('en-US', {
+                      month: 'long',
+                      day: 'numeric',
+                    });
+              const over = overBudgetDates.has(dayItem.date);
 
               return (
                 <div key={dayItem.date} className="space-y-4">
-                  {/* Day Header: "Day 1 — June 1 — Paris" */}
-                  <div className="flex items-center space-x-3 border-b border-borderLight pb-2">
-                    <span className="bg-primary text-white font-extrabold text-xs px-3 py-1.5 rounded-lg shadow-sm">
+                  <div className="flex flex-wrap items-center gap-3 border-b border-border-light pb-3">
+                    <span className="bg-accent text-white font-extrabold text-xs px-3 py-1.5 rounded-lg shadow-sm">
                       Day {dayItem.dayNumber}
                     </span>
-                    <h3 className="text-xl font-bold text-textMain font-display">
-                      {dateFormatted} <span className="text-slate-300 font-normal">—</span>{' '}
+                    <h3 className="text-lg sm:text-xl font-bold text-text-main font-display">
+                      {dateFormatted} <span className="text-border-strong font-normal">—</span>{' '}
                       <span className="text-accent">{dayItem.cityName}</span>
                     </h3>
+                    {over && (
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-warning bg-warning/10 border border-warning/30 px-2.5 py-0.5 rounded-full">
+                        Over budget · ₹{dayItem.spend}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Activity blocks */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {dayItem.activities.map((act) => {
-                      const cost =
-                        act.costOverride !== null && act.costOverride !== undefined
-                          ? act.costOverride
-                          : act.cost;
-
+                      const cost = activityCost(act);
                       return (
-                        <div
-                          key={act.id}
-                          className="bg-surface-card border border-borderLight rounded-card p-5 shadow-card hover:shadow-card-hover transition-all flex items-start space-x-4"
-                        >
+                        <div key={act.id} className="gt-card p-5 flex items-start space-x-4 hover:border-accent/40">
                           {act.imageUrl && (
                             <img
                               src={act.imageUrl}
                               alt={act.name}
-                              className="w-16 h-16 rounded-xl object-cover shrink-0 bg-slate-100"
+                              className="w-16 h-16 rounded-xl object-cover shrink-0 bg-surface-raised border border-border-light"
                             />
                           )}
-
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-0.5 rounded uppercase">
+                              <span className="text-[10px] font-bold text-accent bg-accent-light px-2 py-0.5 rounded-full uppercase">
                                 {act.category || 'Sightseeing'}
                               </span>
                               <span className="text-xs font-bold text-emerald-700">₹{cost}</span>
                             </div>
-
-                            <h4 className="font-bold text-textMain text-sm mt-1 truncate">
-                              {act.name}
-                            </h4>
-
-                            <div className="flex items-center space-x-3 text-xs text-textMuted mt-2">
+                            <h4 className="font-bold text-text-main text-sm mt-1.5 truncate">{act.name}</h4>
+                            <div className="flex items-center space-x-3 text-xs text-text-muted mt-2">
                               <span className="flex items-center space-x-1">
-                                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                                <Clock className="w-3.5 h-3.5 text-accent" />
                                 <span>{act.scheduledTime}</span>
                               </span>
-                              {act.durationMinutes && (
-                                <span>({act.durationMinutes} mins)</span>
-                              )}
+                              {act.durationMinutes && <span>({act.durationMinutes} mins)</span>}
                             </div>
                           </div>
                         </div>

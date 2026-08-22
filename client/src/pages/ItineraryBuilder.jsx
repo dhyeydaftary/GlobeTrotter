@@ -2,26 +2,48 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   Calendar,
-  MapPin,
   Plus,
   Trash2,
-  ArrowUp,
-  ArrowDown,
-  Globe,
-  Lock,
+  ChevronUp,
+  ChevronDown,
   Eye,
-  Clock,
   DollarSign,
   Search,
-  ChevronDown,
   X,
   Check,
+  ChevronRight,
+  Clock,
+  Sparkles,
+  MapPin,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { get, post, patch, del } from '../api/client';
-import { MOCK_TRIP_DETAIL, MOCK_CITIES, MOCK_ACTIVITIES } from '../api/mocks';
-import Skeleton from '../components/Skeleton';
+import { MOCK_TRIP_DETAIL, MOCK_CITIES, MOCK_ACTIVITIES, withMockFallback } from '../api/mocks';
 import ErrorBanner from '../components/ErrorBanner';
+import ConfirmDialog from '../components/ConfirmDialog';
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function toggleChip(list, value) {
+  return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+}
+
+const Chip = ({ active, onClick, children }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all active:scale-[0.97] ${
+      active
+        ? 'bg-accent text-white border-accent shadow-sm'
+        : 'bg-surface text-text-muted border-border-light hover:border-accent/40 hover:text-text-main'
+    }`}
+  >
+    {children}
+  </button>
+);
 
 const ItineraryBuilder = () => {
   const { id } = useParams();
@@ -33,7 +55,6 @@ const ItineraryBuilder = () => {
 
   // Expanded stops tracker (set of stop IDs)
   const [expandedStops, setExpandedStops] = useState(new Set());
-  const [animatingStopId, setAnimatingStopId] = useState(null);
 
   // Toggle Public state
   const [isTogglingPublic, setIsTogglingPublic] = useState(false);
@@ -55,18 +76,14 @@ const ItineraryBuilder = () => {
   const [activityTime, setActivityTime] = useState('10:00');
   const [costOverride, setCostOverride] = useState('');
   const [isAddingActivity, setIsAddingActivity] = useState(false);
+  const [cityRegions, setCityRegions] = useState([]);
+  const [stopToDelete, setStopToDelete] = useState(null);
 
   const fetchTrip = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      let fetchedTrip = null;
-      try {
-        fetchedTrip = await get(`/trips/${id}`);
-      } catch {
-        fetchedTrip = MOCK_TRIP_DETAIL;
-      }
-
+      const fetchedTrip = await withMockFallback(() => get(`/trips/${id}`), MOCK_TRIP_DETAIL);
       setTrip(fetchedTrip);
 
       if (fetchedTrip?.stops) {
@@ -88,30 +105,28 @@ const ItineraryBuilder = () => {
 
   // Debounced City Search
   useEffect(() => {
-    if (!citySearch.trim()) {
-      setCitySearchResults(MOCK_CITIES);
-      return;
-    }
-
     const timer = setTimeout(async () => {
-      try {
-        const results = await get(`/cities?search=${encodeURIComponent(citySearch)}`);
-        setCitySearchResults(results);
-      } catch {
-        setCitySearchResults(
-          MOCK_CITIES.filter(
+      const params = new URLSearchParams();
+      if (citySearch.trim()) params.set('search', citySearch.trim());
+      const qs = params.toString() ? `?${params}` : '';
+      const results = await withMockFallback(
+        () => get(`/cities${qs}`),
+        () => {
+          const q = citySearch.toLowerCase();
+          return MOCK_CITIES.filter(
             (c) =>
-              c.name.toLowerCase().includes(citySearch.toLowerCase()) ||
-              c.country.toLowerCase().includes(citySearch.toLowerCase())
-          )
-        );
-      }
+              !q ||
+              c.name.toLowerCase().includes(q) ||
+              c.country.toLowerCase().includes(q)
+          );
+        }
+      );
+      setCitySearchResults(results || []);
     }, 300);
-
     return () => clearTimeout(timer);
   }, [citySearch]);
 
-  const toggleStopExpand = (stopId) => {
+  const toggleExpand = (stopId) => {
     setExpandedStops((prev) => {
       const next = new Set(prev);
       if (next.has(stopId)) {
@@ -158,7 +173,8 @@ const ItineraryBuilder = () => {
       let newStop = null;
       try {
         newStop = await post(`/trips/${trip.id}/stops`, payload);
-      } catch {
+      } catch (err) {
+        if (err?.code !== 'NETWORK_ERROR') throw err;
         newStop = {
           id: 'stop_' + Date.now(),
           cityId: selectedCity.id,
@@ -208,10 +224,12 @@ const ItineraryBuilder = () => {
       let newSchedAct = null;
       try {
         newSchedAct = await post(`/stops/${stopId}/activities`, payload);
-      } catch {
+      } catch (err) {
+        if (err?.code !== 'NETWORK_ERROR') throw err;
         newSchedAct = {
           id: 'sa_' + Date.now(),
           activityId: selectedActivity.id,
+          activity: selectedActivity,
           name: selectedActivity.name,
           category: selectedActivity.category,
           cost: selectedActivity.cost,
@@ -238,6 +256,7 @@ const ItineraryBuilder = () => {
 
       setActiveActivityStopId(null);
       setSelectedActivity(null);
+      setCostOverride('');
     } catch (err) {
       alert(err.message || 'Failed to add activity');
     } finally {
@@ -245,15 +264,22 @@ const ItineraryBuilder = () => {
     }
   };
 
-  const handleDeleteStop = async (stopId) => {
-    if (!window.confirm('Delete this stop and all its scheduled activities?')) return;
+  const handleDeleteStop = async () => {
+    const stopId = stopToDelete;
+    if (!stopId) return;
     try {
       await del(`/stops/${stopId}`);
-    } catch {}
+    } catch (err) {
+      if (err?.code !== 'NETWORK_ERROR') {
+        setError({ message: err.message || 'Failed to delete stop.' });
+        return;
+      }
+    }
     setTrip((prev) => ({
       ...prev,
       stops: prev.stops.filter((s) => s.id !== stopId),
     }));
+    setStopToDelete(null);
   };
 
   const handleDeleteActivity = async (stopId, scheduledActivityId) => {
@@ -274,17 +300,11 @@ const ItineraryBuilder = () => {
     }));
   };
 
-  const handleReorderStop = async (index, direction) => {
+  const handleReorderStop = async (index, direction, e) => {
+    e.stopPropagation();
     if (!trip?.stops) return;
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= trip.stops.length) return;
-
-    const stopToAnimate = trip.stops[index].id;
-    setAnimatingStopId(stopToAnimate);
-
-    setTimeout(() => {
-      setAnimatingStopId(null);
-    }, 150);
 
     const newStops = [...trip.stops];
     const [moved] = newStops.splice(index, 1);
@@ -301,147 +321,164 @@ const ItineraryBuilder = () => {
 
   const isOwner = user && (!trip?.userId || trip.userId === user.id);
 
-  if (loading) return <Skeleton type="itinerary" />;
+  if (loading) {
+    return (
+      <div className="page-enter max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pt-24 space-y-6">
+        <div className="skeleton h-28 w-full rounded-card" />
+        <div className="skeleton h-48 w-full rounded-card" />
+        <div className="skeleton h-48 w-full rounded-card" />
+      </div>
+    );
+  }
+
   if (!trip) return <ErrorBanner message="Trip not found" onRetry={fetchTrip} />;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="page-enter max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pt-24 pb-16 space-y-8">
       {/* Top Banner Header */}
-      <div className="bg-surface-card rounded-card p-6 sm:p-8 shadow-card border border-borderLight flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="gt-card p-6 sm:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <div className="flex items-center space-x-2 text-xs font-semibold text-textMuted mb-2">
+          <div className="flex items-center space-x-2 text-xs font-semibold text-text-muted mb-2">
             <Calendar className="w-4 h-4 text-accent" />
             <span>
-              {trip.startDate} – {trip.endDate}
+              {formatDate(trip.startDate)} – {formatDate(trip.endDate)}
             </span>
           </div>
-          <h1 className="text-3xl font-extrabold text-textMain tracking-tight font-display">
+          <h1 className="text-display-md text-2xl sm:text-3xl font-extrabold text-text-main">
             {trip.name}
           </h1>
-          {trip.description && <p className="text-slate-600 text-sm mt-2">{trip.description}</p>}
+          {trip.description && (
+            <p className="text-text-muted text-sm mt-2 leading-relaxed max-w-2xl">{trip.description}</p>
+          )}
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
           <Link
             to={`/trips/${trip.id}/view`}
-            className="inline-flex items-center space-x-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 px-4 py-2.5 rounded-btn transition-all"
+            className="inline-flex items-center gap-1.5 text-xs font-bold bg-surface-raised hover:bg-border-light text-text-main px-4 py-2.5 rounded-btn border border-border-light active:scale-[0.97] transition-all"
           >
-            <Eye className="w-4 h-4" />
+            <Eye className="w-4 h-4 text-accent" />
             <span>View Itinerary</span>
           </Link>
 
           <Link
             to={`/trips/${trip.id}/budget`}
-            className="inline-flex items-center space-x-1.5 text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2.5 rounded-btn transition-all"
+            className="inline-flex items-center gap-1.5 text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2.5 rounded-btn border border-emerald-200 active:scale-[0.97] transition-all"
           >
             <DollarSign className="w-4 h-4" />
             <span>Budget Details</span>
           </Link>
-
-          {/* Toggle Switch Component */}
-          {isOwner && (
-            <div className="flex items-center space-x-2.5 bg-slate-50 px-3.5 py-2 rounded-btn border border-borderLight">
-              <span className="text-xs font-bold text-slate-700">Public:</span>
-              <button
-                type="button"
-                onClick={handleTogglePublic}
-                disabled={isTogglingPublic}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none ${
-                  trip.isPublic ? 'bg-accent' : 'bg-slate-300'
-                }`}
-                role="switch"
-                aria-checked={trip.isPublic}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${
-                    trip.isPublic ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
       <ErrorBanner message={error?.message} code={error?.code} onRetry={fetchTrip} onClose={() => setError(null)} />
 
-      {/* Main Stops Header & Add Stop Coral Outline CTA Button */}
+      {/* Main Stops Header & Add Stop CTA */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-extrabold text-textMain tracking-tight font-display">
-            Trip Stops
-          </h2>
-          <p className="text-xs text-textMuted">Organize destinations and schedule daily activities</p>
+          <h2 className="text-display-md text-xl font-bold text-text-main">Trip Stops</h2>
+          <p className="text-xs text-text-muted mt-0.5">Organize destinations and schedule daily activities</p>
         </div>
 
         {isOwner && (
           <button
             onClick={() => setShowAddStopPanel(!showAddStopPanel)}
-            className="inline-flex items-center space-x-1.5 border-2 border-accent text-accent hover:bg-accent hover:text-white font-extrabold text-xs px-4 py-2.5 rounded-btn shadow-sm transition-all"
+            className="inline-flex items-center gap-1.5 bg-accent hover:bg-accent-hover text-white font-bold px-4 py-2.5 rounded-btn text-xs shadow-btn-accent active:scale-[0.97] transition-all"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Stop</span>
+            <span>{showAddStopPanel ? 'Close Panel' : 'Add Stop'}</span>
           </button>
         )}
       </div>
 
-      {/* Slide-Down Panel for Add Stop */}
+      {/* Slide-Down Frosted Glass Panel for Add Stop */}
       <div
         className={`transition-all duration-300 ease-out overflow-hidden ${
-          showAddStopPanel ? 'max-h-[450px] opacity-100 mb-6' : 'max-h-0 opacity-0'
+          showAddStopPanel ? 'max-h-[760px] opacity-100 mb-6' : 'max-h-0 opacity-0'
         }`}
       >
         <form
           onSubmit={handleAddStopSubmit}
-          className="bg-surface-card border-2 border-accent/30 rounded-card p-6 shadow-card space-y-4"
+          className="gt-glass p-6 sm:p-7 rounded-card space-y-5 border border-accent/30 shadow-glass"
         >
-          <div className="flex items-center justify-between border-b border-borderLight pb-3">
-            <h3 className="font-bold text-textMain text-base">Add New Stop to Trip</h3>
+          <div className="flex items-center justify-between border-b border-border-light pb-3">
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+              <h3 className="font-display font-bold text-text-main text-base">Add New Stop to Trip</h3>
+            </div>
             <button
               type="button"
               onClick={() => setShowAddStopPanel(false)}
-              className="text-textMuted hover:text-slate-800 p-1"
+              className="text-text-muted hover:text-text-main p-1 rounded-lg hover:bg-surface-raised transition-colors"
+              aria-label="Close add stop panel"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div>
-              <label className="block text-xs font-semibold text-textMain uppercase mb-1">
+              <label className="block text-xs font-bold text-text-main uppercase tracking-wider mb-1.5">
                 Search City
               </label>
               <div className="relative">
-                <Search className="w-4 h-4 text-textMuted absolute left-3 top-3" />
+                <Search className="w-4 h-4 text-text-muted absolute left-3 top-2.5" />
                 <input
                   type="text"
                   value={citySearch}
                   onChange={(e) => setCitySearch(e.target.value)}
                   placeholder="e.g. Paris, Rome..."
-                  className="block w-full pl-9 pr-3 py-2 border border-borderLight rounded-input text-sm bg-slate-50"
+                  className="block w-full pl-9 pr-3 py-2 border border-border-light rounded-btn text-xs sm:text-sm bg-white/90 text-text-main focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
                 />
               </div>
-              <div className="mt-2 max-h-36 overflow-y-auto border border-borderLight rounded-input bg-white divide-y">
-                {citySearchResults.map((city) => (
-                  <button
-                    key={city.id}
-                    type="button"
-                    onClick={() => setSelectedCity(city)}
-                    className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-slate-50 ${
-                      selectedCity?.id === city.id ? 'bg-primary/10 font-bold text-primary' : ''
-                    }`}
-                  >
-                    <span>
-                      {city.name}, {city.country}
-                    </span>
-                    {selectedCity?.id === city.id && <Check className="w-4 h-4 text-primary" />}
-                  </button>
-                ))}
+
+              {/* Region chips */}
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {[...new Set((citySearchResults.length ? citySearchResults : MOCK_CITIES).map((c) => c.region).filter(Boolean))].map(
+                  (region) => (
+                    <Chip
+                      key={region}
+                      active={cityRegions.includes(region)}
+                      onClick={() => setCityRegions((prev) => toggleChip(prev, region))}
+                    >
+                      {region}
+                    </Chip>
+                  )
+                )}
+              </div>
+
+              {/* City Selection List with Accent Light Highlight */}
+              <div className="mt-2.5 max-h-40 overflow-y-auto border border-border-light rounded-xl bg-white divide-y divide-border-light/60 shadow-sm">
+                {citySearchResults
+                  .filter((c) => !cityRegions.length || cityRegions.includes(c.region))
+                  .map((city) => {
+                    const isSelected = selectedCity?.id === city.id;
+                    return (
+                      <button
+                        key={city.id}
+                        type="button"
+                        onClick={() => setSelectedCity(city)}
+                        className={`w-full text-left px-3.5 py-2.5 text-xs flex items-center justify-between transition-colors ${
+                          isSelected
+                            ? 'bg-accent-light text-accent font-bold'
+                            : 'hover:bg-accent-light/50 text-text-main'
+                        }`}
+                      >
+                        <span className="flex items-center space-x-2">
+                          <MapPin className={`w-3.5 h-3.5 ${isSelected ? 'text-accent' : 'text-text-light'}`} />
+                          <span>
+                            {city.name}, <span className="text-text-muted">{city.country}</span>
+                          </span>
+                        </span>
+                        {isSelected && <Check className="w-4 h-4 text-accent" />}
+                      </button>
+                    );
+                  })}
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-textMain uppercase mb-1">
+              <label className="block text-xs font-bold text-text-main uppercase tracking-wider mb-1.5">
                 Arrival Date
               </label>
               <input
@@ -449,12 +486,12 @@ const ItineraryBuilder = () => {
                 required
                 value={stopArrival}
                 onChange={(e) => setStopArrival(e.target.value)}
-                className="block w-full px-3 py-2 border border-borderLight rounded-input text-sm bg-slate-50"
+                className="block w-full px-3 py-2 border border-border-light rounded-btn text-xs sm:text-sm bg-white/90 text-text-main focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-textMain uppercase mb-1">
+              <label className="block text-xs font-bold text-text-main uppercase tracking-wider mb-1.5">
                 Departure Date
               </label>
               <input
@@ -462,167 +499,164 @@ const ItineraryBuilder = () => {
                 required
                 value={stopDeparture}
                 onChange={(e) => setStopDeparture(e.target.value)}
-                className="block w-full px-3 py-2 border border-borderLight rounded-input text-sm bg-slate-50"
+                className="block w-full px-3 py-2 border border-border-light rounded-btn text-xs sm:text-sm bg-white/90 text-text-main focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
               />
             </div>
           </div>
 
-          <div className="flex justify-end space-x-2 pt-2">
+          <div className="flex justify-end space-x-3 pt-2 border-t border-border-light/60">
             <button
               type="button"
               onClick={() => setShowAddStopPanel(false)}
-              className="px-4 py-2 text-xs font-semibold text-textMuted hover:bg-slate-100 rounded-btn"
+              className="px-4 py-2 text-xs font-semibold text-text-muted hover:text-text-main rounded-btn hover:bg-surface-raised transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isAddingStop || !selectedCity}
-              className="px-5 py-2 text-xs font-bold bg-accent hover:bg-accent-hover text-white rounded-btn shadow-sm disabled:opacity-50"
+              className="px-5 py-2.5 text-xs font-bold bg-accent hover:bg-accent-hover text-white rounded-btn shadow-btn-accent active:scale-[0.97] transition-all disabled:opacity-50"
             >
-              {isAddingStop ? 'Adding...' : 'Confirm Stop'}
+              {isAddingStop ? 'Adding stop...' : 'Confirm Stop'}
             </button>
           </div>
         </form>
       </div>
 
-      {/* Stops List (Visible Border border: 1px solid #E5E7EB, rounded-xl, p-5) */}
+      {/* Stop Cards */}
       {trip.stops?.length === 0 ? (
-        <div className="bg-surface-card rounded-xl p-8 text-center border border-borderLight text-textMuted">
-          No stops added to this trip yet. Click "+ Add Stop" above to begin.
+        <div className="gt-card p-10 text-center border-dashed text-text-muted space-y-3">
+          <p className="text-sm font-medium">No stops added to this trip yet.</p>
+          <button
+            type="button"
+            onClick={() => setShowAddStopPanel(true)}
+            className="text-xs font-bold text-accent hover:underline inline-flex items-center gap-1"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Click here to add your first stop</span>
+          </button>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {trip.stops?.map((stop, index) => {
             const isExpanded = expandedStops.has(stop.id);
-            const isAnimating = animatingStopId === stop.id;
 
-            const stopCostTotal = (stop.scheduledActivities || []).reduce((acc, act) => {
-              const cost = act.costOverride !== null && act.costOverride !== undefined ? act.costOverride : act.cost;
-              return acc + (cost || 0);
-            }, 0);
-
-            const groupedActivities = {};
+            // Group activities by date
+            const dayGroupsMap = {};
             (stop.scheduledActivities || []).forEach((act) => {
               const dayKey = act.scheduledDate || 'Unscheduled';
-              if (!groupedActivities[dayKey]) groupedActivities[dayKey] = [];
-              groupedActivities[dayKey].push(act);
+              if (!dayGroupsMap[dayKey]) dayGroupsMap[dayKey] = [];
+              dayGroupsMap[dayKey].push(act);
             });
 
+            const dayGroups = Object.entries(dayGroupsMap).map(([date, activities]) => ({
+              date,
+              activities,
+            }));
+
             return (
-              <div
-                key={stop.id}
-                className={`bg-surface-card rounded-xl shadow-card border border-borderLight overflow-hidden transition-all duration-200 ${
-                  isAnimating ? 'animate-reorder-snap' : ''
-                }`}
-              >
-                {/* Collapsible Header */}
-                <div className="bg-primary text-white p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div
-                    onClick={() => toggleStopExpand(stop.id)}
-                    className="flex items-center space-x-3 cursor-pointer flex-1"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-accent text-white flex items-center justify-center font-extrabold text-sm shrink-0">
+              <div key={stop.id} className="gt-card p-0 overflow-hidden shadow-card hover:shadow-card-hover transition-all">
+                {/* Stop Header */}
+                <div
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-5 sm:p-6 cursor-pointer hover:bg-surface-raised/60 transition-colors"
+                  onClick={() => toggleExpand(stop.id)}
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-accent-light text-accent border border-accent/20 flex items-center justify-center font-extrabold text-sm flex-shrink-0">
                       {index + 1}
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-white flex items-center space-x-2">
-                        <MapPin className="w-4 h-4 text-accent" />
-                        <span>
-                          {stop.city?.name || stop.cityName}, {stop.city?.country}
-                        </span>
+                      <h3 className="font-display font-bold text-text-main text-base sm:text-lg">
+                        {stop.city?.name || stop.cityName}
                       </h3>
-                      <p className="text-xs text-slate-300 mt-0.5">
-                        {stop.arrivalDate} – {stop.departureDate} • Total: ₹{stopCostTotal.toFixed(2)}
+                      <p className="text-text-muted text-xs">
+                        {formatDate(stop.arrivalDate)} → {formatDate(stop.departureDate)}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2 shrink-0">
+                  <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {/* Segmented Reorder & Actions Group */}
                     {isOwner && (
-                      <>
+                      <div className="inline-flex items-center bg-surface border border-border-light rounded-btn p-0.5 shadow-sm">
                         <button
-                          onClick={() => handleReorderStop(index, 'up')}
+                          onClick={(e) => handleReorderStop(index, 'up', e)}
                           disabled={index === 0}
-                          className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg disabled:opacity-30"
+                          className="p-1.5 text-text-muted hover:text-text-main hover:bg-surface-raised rounded-md transition-all active:scale-[0.95] disabled:opacity-30 disabled:hover:bg-transparent"
                           title="Move Stop Up"
+                          aria-label="Move stop up"
                         >
-                          <ArrowUp className="w-4 h-4" />
+                          <ChevronUp className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleReorderStop(index, 'down')}
+                          onClick={(e) => handleReorderStop(index, 'down', e)}
                           disabled={index === trip.stops.length - 1}
-                          className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg disabled:opacity-30"
+                          className="p-1.5 text-text-muted hover:text-text-main hover:bg-surface-raised rounded-md transition-all active:scale-[0.95] disabled:opacity-30 disabled:hover:bg-transparent"
                           title="Move Stop Down"
+                          aria-label="Move stop down"
                         >
-                          <ArrowDown className="w-4 h-4" />
+                          <ChevronDown className="w-4 h-4" />
                         </button>
-
-                        {/* Add Activity Coral Outline Button */}
+                        <div className="w-px h-4 bg-border-light my-auto mx-0.5" />
                         <button
-                          onClick={() => {
-                            setExpandedStops((prev) => new Set([...prev, stop.id]));
-                            setActiveActivityStopId(stop.id);
-                            setSelectedActivity(null);
-                            setActivityDate(stop.arrivalDate || '');
-                            setActivitySearchResults(MOCK_ACTIVITIES);
-                          }}
-                          className="inline-flex items-center space-x-1 text-xs font-bold border-2 border-accent text-accent hover:bg-accent hover:text-white bg-transparent px-3 py-1.5 rounded-btn shadow-sm transition-all"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Add Activity</span>
-                        </button>
-
-                        <button
-                          onClick={() => handleDeleteStop(stop.id)}
-                          className="p-1.5 text-rose-400 hover:text-rose-300 hover:bg-slate-800 rounded-lg"
+                          onClick={() => setStopToDelete(stop.id)}
+                          className="p-1.5 text-danger hover:bg-danger/10 rounded-md transition-all active:scale-[0.95]"
                           title="Delete Stop"
+                          aria-label="Delete stop"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
-                      </>
+                      </div>
                     )}
 
-                    {/* Expand/Collapse Chevron rotating 0deg -> 180deg (250ms ease-out) */}
+                    <span className="text-xs font-semibold text-text-muted bg-surface-raised px-2.5 py-1 rounded-full border border-border-light">
+                      {stop.scheduledActivities?.length || 0} activities
+                    </span>
+
                     <button
-                      onClick={() => toggleStopExpand(stop.id)}
-                      className="p-1.5 text-slate-300 hover:text-white rounded-lg transition-transform duration-250 ease-out"
+                      type="button"
+                      onClick={() => toggleExpand(stop.id)}
+                      className="p-1.5 rounded-lg text-text-muted hover:text-text-main hover:bg-surface-raised transition-colors active:scale-[0.97]"
+                      aria-label={isExpanded ? 'Collapse stop' : 'Expand stop'}
                     >
-                      <ChevronDown
-                        className={`w-5 h-5 transition-transform duration-250 ease-out ${
-                          isExpanded ? 'rotate-180' : 'rotate-0'
+                      <ChevronRight
+                        className={`w-5 h-5 transition-transform duration-250 ${
+                          isExpanded ? 'rotate-90 text-accent' : 'text-text-muted'
                         }`}
                       />
                     </button>
                   </div>
                 </div>
 
-                {/* Collapsible Body (p-5 = 20px padding) */}
+                {/* Expanded Content */}
                 {isExpanded && (
-                  <div className="p-5 space-y-6 animate-fade-in">
-                    {/* Add Activity Inline Panel */}
+                  <div className="border-t border-border-light p-5 sm:p-6 bg-surface-raised/30">
+                    {/* Add Activity Frosted Glass Form Panel */}
                     {activeActivityStopId === stop.id && isOwner && (
                       <form
                         onSubmit={(e) => handleAddActivitySubmit(e, stop.id)}
-                        className="p-4 bg-accent/5 rounded-card border border-accent/20 space-y-4"
+                        className="gt-glass p-5 rounded-card border border-accent/30 space-y-4 mb-6 shadow-glass animate-fadeIn"
                       >
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-bold text-textMain uppercase tracking-wider">
-                            Schedule Activity in {stop.city?.name}
-                          </h4>
+                        <div className="flex items-center justify-between border-b border-border-light pb-2.5">
+                          <div className="flex items-center space-x-1.5">
+                            <Sparkles className="w-4 h-4 text-accent" />
+                            <h4 className="text-xs font-bold text-text-main uppercase tracking-wider">
+                              Schedule Activity in {stop.city?.name}
+                            </h4>
+                          </div>
                           <button
                             type="button"
                             onClick={() => setActiveActivityStopId(null)}
-                            className="text-textMuted hover:text-slate-800"
+                            className="text-text-muted hover:text-text-main p-1"
                           >
                             <X className="w-4 h-4" />
                           </button>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                           <div className="sm:col-span-2">
-                            <label className="block text-xs font-semibold text-textMain uppercase mb-1">
-                              Activity
+                            <label className="block text-xs font-bold text-text-main uppercase tracking-wider mb-1.5">
+                              Select Activity
                             </label>
                             <select
                               required
@@ -631,9 +665,9 @@ const ItineraryBuilder = () => {
                                 const act = activitySearchResults.find((a) => a.id === e.target.value);
                                 setSelectedActivity(act || null);
                               }}
-                              className="block w-full px-3 py-2 border border-borderLight rounded-input text-xs bg-white"
+                              className="block w-full px-3 py-2 border border-border-light rounded-btn text-xs sm:text-sm bg-white text-text-main focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                             >
-                              <option value="">-- Select Activity --</option>
+                              <option value="">-- Choose an Activity --</option>
                               {activitySearchResults.map((act) => (
                                 <option key={act.id} value={act.id}>
                                   {act.name} (₹{act.cost})
@@ -643,7 +677,7 @@ const ItineraryBuilder = () => {
                           </div>
 
                           <div>
-                            <label className="block text-xs font-semibold text-textMain uppercase mb-1">
+                            <label className="block text-xs font-bold text-text-main uppercase tracking-wider mb-1.5">
                               Date
                             </label>
                             <input
@@ -653,12 +687,12 @@ const ItineraryBuilder = () => {
                               max={stop.departureDate}
                               value={activityDate}
                               onChange={(e) => setActivityDate(e.target.value)}
-                              className="block w-full px-3 py-2 border border-borderLight rounded-input text-xs bg-white"
+                              className="block w-full px-3 py-2 border border-border-light rounded-btn text-xs sm:text-sm bg-white text-text-main focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                             />
                           </div>
 
                           <div>
-                            <label className="block text-xs font-semibold text-textMain uppercase mb-1">
+                            <label className="block text-xs font-bold text-text-main uppercase tracking-wider mb-1.5">
                               Time (HH:mm)
                             </label>
                             <input
@@ -666,15 +700,15 @@ const ItineraryBuilder = () => {
                               required
                               value={activityTime}
                               onChange={(e) => setActivityTime(e.target.value)}
-                              className="block w-full px-3 py-2 border border-borderLight rounded-input text-xs bg-white"
+                              className="block w-full px-3 py-2 border border-border-light rounded-btn text-xs sm:text-sm bg-white text-text-main focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                             />
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between pt-2">
-                          <div className="w-48">
-                            <label className="block text-xs font-semibold text-textMain uppercase mb-1">
-                              Cost Override
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-2 border-t border-border-light/60">
+                          <div className="w-full sm:w-56">
+                            <label className="block text-xs font-bold text-text-main uppercase tracking-wider mb-1">
+                              Cost Override (₹)
                             </label>
                             <input
                               type="number"
@@ -682,22 +716,22 @@ const ItineraryBuilder = () => {
                               placeholder={`Default ₹${selectedActivity?.cost || 0}`}
                               value={costOverride}
                               onChange={(e) => setCostOverride(e.target.value)}
-                              className="block w-full px-3 py-1.5 border border-borderLight rounded-input text-xs bg-white"
+                              className="block w-full px-3 py-1.5 border border-border-light rounded-btn text-xs bg-white text-text-main focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                             />
                           </div>
 
-                          <div className="flex space-x-2">
+                          <div className="flex space-x-2.5 self-end sm:self-auto">
                             <button
                               type="button"
                               onClick={() => setActiveActivityStopId(null)}
-                              className="px-3 py-1.5 text-xs text-textMuted hover:bg-slate-200 rounded-btn"
+                              className="px-4 py-2 text-xs font-semibold text-text-muted hover:text-text-main rounded-btn hover:bg-surface-raised transition-colors"
                             >
                               Cancel
                             </button>
                             <button
                               type="submit"
                               disabled={isAddingActivity || !selectedActivity}
-                              className="px-4 py-1.5 text-xs font-bold bg-accent text-white rounded-btn disabled:opacity-50"
+                              className="px-5 py-2 text-xs font-bold bg-accent hover:bg-accent-hover text-white rounded-btn shadow-btn-accent active:scale-[0.97] transition-all disabled:opacity-50"
                             >
                               {isAddingActivity ? 'Adding...' : 'Save Activity'}
                             </button>
@@ -706,63 +740,74 @@ const ItineraryBuilder = () => {
                       </form>
                     )}
 
-                    {/* Activity Rows Grouped by Day */}
-                    {Object.keys(groupedActivities).length === 0 ? (
-                      <div className="text-xs text-textMuted italic py-2">
-                        No scheduled activities for this stop yet. Click "+ Add Activity" to schedule one.
-                      </div>
+                    {/* Day groups */}
+                    {dayGroups.length === 0 ? (
+                      <p className="text-xs text-text-muted italic py-3 text-center">
+                        No scheduled activities for this stop yet. Click "+ Add Activity" below to schedule.
+                      </p>
                     ) : (
-                      Object.entries(groupedActivities).map(([date, acts]) => (
-                        <div key={date} className="space-y-2">
-                          {/* Day Subheader: 13px, font-semibold, #6B7280, UPPERCASE, letter-spacing 0.05em, border-bottom #E5E7EB, pb-2, mb-3 */}
-                          <div className="text-[13px] font-semibold text-[#6B7280] uppercase tracking-[0.05em] border-b border-borderLight pb-2 mb-3">
-                            📅 {date}
-                          </div>
-
-                          {/* Activity rows: flex, space-between, align-center, py-2.5 (10px), border-bottom #F3F4F6 */}
-                          <div className="divide-y divide-[#F3F4F6]">
-                            {acts.map((act) => {
-                              const actCost =
-                                act.costOverride !== null && act.costOverride !== undefined
-                                  ? act.costOverride
-                                  : act.cost;
-
-                              return (
+                      <div className="space-y-4">
+                        {dayGroups.map((day) => (
+                          <div key={day.date} className="bg-surface-card rounded-xl p-4 border border-border-light">
+                            <div className="text-[11px] font-bold text-accent uppercase tracking-wider pb-2 mb-2 border-b border-border-light/60 flex items-center justify-between">
+                              <span>{formatDate(day.date)}</span>
+                              <span className="text-text-muted font-normal lowercase">{day.activities.length} planned</span>
+                            </div>
+                            <div className="divide-y divide-border-light/40">
+                              {day.activities.map((act) => (
                                 <div
                                   key={act.id}
-                                  className="flex items-center justify-between py-[10px] hover:bg-slate-50 transition-colors group px-2 rounded-lg"
+                                  className="flex items-center justify-between py-2.5 group/act transition-colors hover:bg-surface-raised/40 px-2 rounded-lg"
                                 >
-                                  {/* Left: Time in bold navy */}
-                                  <span className="font-bold text-xs text-primary shrink-0 w-16">
-                                    {act.scheduledTime}
-                                  </span>
-
-                                  {/* Center: Activity name */}
-                                  <span className="font-semibold text-textMain text-xs sm:text-sm flex-1 truncate px-3">
-                                    {act.name}
-                                  </span>
-
-                                  {/* Right: Cost in muted gray + delete icon */}
-                                  <div className="flex items-center space-x-3 shrink-0">
-                                    <span className="text-xs font-semibold text-[#6B7280]">
-                                      ₹{actCost}
+                                  <div className="flex items-center gap-3">
+                                    <span className="flex items-center space-x-1 text-xs font-bold text-text-main w-16 flex-shrink-0">
+                                      <Clock className="w-3.5 h-3.5 text-accent flex-shrink-0" />
+                                      <span>{act.scheduledTime || '—'}</span>
+                                    </span>
+                                    <span className="text-text-main text-xs sm:text-sm font-medium">
+                                      {act.activity?.name || act.name}
+                                    </span>
+                                    <span className="hidden sm:inline-block text-[10px] uppercase font-bold text-accent bg-accent-light px-2 py-0.5 rounded-full">
+                                      {act.category || 'Sightseeing'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-xs font-bold text-emerald-700">
+                                      ₹{act.costOverride ?? act.activity?.cost ?? act.cost ?? 0}
                                     </span>
                                     {isOwner && (
                                       <button
                                         onClick={() => handleDeleteActivity(stop.id, act.id)}
-                                        className="text-slate-300 group-hover:text-rose-600 p-1 transition-colors"
+                                        className="opacity-0 group-hover/act:opacity-100 text-danger hover:bg-danger/10 transition-all p-1 rounded font-bold text-sm"
                                         title="Delete Activity"
+                                        aria-label="Delete Activity"
                                       >
-                                        <Trash2 className="w-4 h-4" />
+                                        <X className="w-4 h-4" />
                                       </button>
                                     )}
                                   </div>
                                 </div>
-                              );
-                            })}
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add Activity CTA Button */}
+                    {isOwner && (
+                      <button
+                        onClick={() => {
+                          setActiveActivityStopId(stop.id);
+                          setSelectedActivity(null);
+                          setActivityDate(stop.arrivalDate || '');
+                          setActivitySearchResults(MOCK_ACTIVITIES);
+                        }}
+                        className="mt-4 w-full py-3 rounded-btn border-2 border-dashed border-accent/40 text-accent font-bold text-xs sm:text-sm hover:border-accent hover:bg-accent-light/40 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Add Activity to {stop.city?.name}</span>
+                      </button>
                     )}
                   </div>
                 )}
@@ -771,6 +816,43 @@ const ItineraryBuilder = () => {
           })}
         </div>
       )}
+
+      {/* Toggle Public Switch */}
+      {isOwner && (
+        <div className="gt-card p-5 sm:p-6 flex items-center justify-between gap-4 mt-6">
+          <div>
+            <p className="font-bold text-text-main text-sm sm:text-base">Make Trip Public</p>
+            <p className="text-text-muted text-xs sm:text-sm mt-0.5">
+              Generate a shareable link that anyone can view and copy
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={isTogglingPublic}
+            onClick={handleTogglePublic}
+            className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 focus:outline-none ${
+              trip.isPublic ? 'bg-accent shadow-btn-accent' : 'bg-border-strong'
+            }`}
+            aria-label="Toggle Public Status"
+          >
+            <span
+              className={`inline-block h-5 w-5 rounded-full bg-white shadow-md transition-transform duration-200 ${
+                trip.isPublic ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+      )}
+
+      {/* Stop Delete Modal */}
+      <ConfirmDialog
+        open={Boolean(stopToDelete)}
+        title="Remove this stop?"
+        message="All scheduled activities for this destination will be removed from your itinerary."
+        confirmLabel="Remove stop"
+        onCancel={() => setStopToDelete(null)}
+        onConfirm={handleDeleteStop}
+      />
     </div>
   );
 };
