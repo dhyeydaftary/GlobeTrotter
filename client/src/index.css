@@ -128,95 +128,16 @@ select:focus {
   }
 }
 
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0px) rotate(var(--rotate, 0deg));
-  }
 
-  50% {
-    transform: translateY(-8px) rotate(var(--rotate, 0deg));
-  }
-}
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.animate-fadeInUp {
-  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  opacity: 0;
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.4s ease-out forwards;
-  opacity: 0;
-}
-
-.animate-scaleIn {
-  animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  opacity: 0;
-}
-
-.animate-float {
-  animation: float 4s ease-in-out infinite;
-}
-
-.delay-100 {
-  animation-delay: 0.08s;
-}
-
-.delay-200 {
-  animation-delay: 0.16s;
-}
-
-.delay-300 {
-  animation-delay: 0.24s;
-}
-
-.delay-400 {
-  animation-delay: 0.32s;
-}
-
-.delay-500 {
-  animation-delay: 0.4s;
-}
-
-.delay-600 {
-  animation-delay: 0.48s;
-}
+/* CSS animation classes removed — section reveals now handled by motion (motion/react).
+   See client/src/lib/motion.js for shared spring configs + reduced-motion helpers. */
 
 @media (prefers-reduced-motion: reduce) {
+  /* Slow down or kill CSS-driven animations (shimmer, page-enter).
+     motion/react section reveals are handled by getMotionProps() in lib/motion.js — no duplicate needed here. */
   *,
   *::before,
   *::after {
@@ -225,10 +146,6 @@ select:focus {
     transition-duration: 0.01ms !important;
   }
 
-  .animate-fadeInUp,
-  .animate-fadeIn,
-  .animate-scaleIn,
-  .animate-float,
   .page-enter {
     animation: none !important;
     opacity: 1 !important;
