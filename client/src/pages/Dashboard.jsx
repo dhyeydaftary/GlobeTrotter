@@ -29,12 +29,10 @@ const Dashboard = () => {
       const fetchedTrips = await get('/trips');
       setTrips(fetchedTrips || []);
 
-      if (fetchedTrips?.length > 0) {
-        const recommendationsResult = await get(`/trips/${fetchedTrips[0].id}/recommendations?type=city`);
-        setRecData(recommendationsResult || { source: 'fallback', recommendations: [] });
-      } else {
-        setRecData({ source: 'ai', recommendations: [] });
-      }
+      const recommendationsResult = fetchedTrips?.length > 0
+        ? await get(`/trips/${fetchedTrips[0].id}/recommendations?type=city`)
+        : await get('/recommendations?type=city');
+      setRecData(recommendationsResult || { source: 'fallback', recommendations: [] });
     } catch (err) {
       setError({
         message: err.message || 'Failed to load your dashboard data. Please try again.',
@@ -230,9 +228,11 @@ const Dashboard = () => {
                 const scorePercent = Math.min(100, Math.max(10, (rec.score || 0.9) * (rec.score > 1 ? 10 : 100)));
 
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={rec.id || index}
-                    className="w-[210px] gt-card p-3.5 shrink-0 flex flex-col justify-between group"
+                    onClick={() => navigate('/trips/new', { state: { cityName: rec.name } })}
+                    className="w-[210px] gt-card p-3.5 shrink-0 flex flex-col justify-between group text-left cursor-pointer"
                   >
                     <div>
                       <div className="h-[120px] w-full rounded-xl overflow-hidden mb-3 bg-surface-raised relative">
@@ -277,7 +277,7 @@ const Dashboard = () => {
                         />
                       </div>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>

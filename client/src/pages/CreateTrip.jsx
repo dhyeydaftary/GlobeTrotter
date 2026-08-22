@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ArrowLeft, Image, Sparkles } from 'lucide-react';
 import { post } from '../api/client';
 import ErrorBanner from '../components/ErrorBanner';
@@ -14,11 +14,15 @@ const PRESET_COVERS = [
 
 const CreateTrip = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const prefillCityName = location.state?.cityName || '';
 
-  const [name, setName] = useState('');
+  const [name, setName] = useState(prefillCityName ? `Trip to ${prefillCityName}` : '');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [description, setDescription] = useState('');
+  const [description, setDescription] = useState(
+    prefillCityName ? `Exploring ${prefillCityName}.` : ''
+  );
   const [coverPhotoUrl, setCoverPhotoUrl] = useState('');
 
   const [error, setError] = useState(null);
@@ -98,6 +102,12 @@ const CreateTrip = () => {
             Set your dates, give it a name, and start assembling your multi-city adventure.
           </p>
         </div>
+
+        {prefillCityName && (
+          <div className="bg-accent-light/70 border border-accent/20 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-accent-dark font-medium">
+            Pre-filled from your <span className="font-bold">{prefillCityName}</span> recommendation — add it as a stop once the trip is created.
+          </div>
+        )}
 
         <ErrorBanner message={error?.message} code={error?.code} onClose={() => setError(null)} />
 

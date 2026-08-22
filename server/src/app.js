@@ -9,7 +9,7 @@ const scheduledActivityRoutes = require('./routes/scheduledActivityRoutes');
 const userRoutes = require('./routes/userRoutes');
 const { cityRouter, activityRouter } = require('./routes/catalogRoutes');
 const { getPublicTrip } = require('./controllers/tripController');
-const { getRecommendations } = require('./controllers/recommendationController');
+const { getRecommendations, getGeneralRecommendations } = require('./controllers/recommendationController');
 const { authGuard } = require('./middleware/authGuard');
 const { errorHandler } = require('./middleware/errorHandler');
 
@@ -29,6 +29,7 @@ app.use('/api/activities', activityRouter);
 app.use('/api/users', userRoutes);
 app.get('/api/public/trips/:slug', getPublicTrip);
 app.get('/api/trips/:tripId/recommendations', authGuard, getRecommendations);
+app.get('/api/recommendations', authGuard, getGeneralRecommendations);
 
 app.use(errorHandler);
 
