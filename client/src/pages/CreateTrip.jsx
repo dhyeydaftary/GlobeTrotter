@@ -1,8 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, FileText, Image as ImageIcon, MapPin, Sparkles } from 'lucide-react';
+import { ArrowLeft, Image, Sparkles } from 'lucide-react';
 import { post } from '../api/client';
 import ErrorBanner from '../components/ErrorBanner';
+import { TRIP_CARD_FALLBACK, HERO_PARIS, HERO_BALI, HERO_TOKYO, DASH_SANTORINI } from '../constants/images';
+
+const PRESET_COVERS = [
+  { label: 'Santorini', url: DASH_SANTORINI },
+  { label: 'Paris', url: HERO_PARIS },
+  { label: 'Bali', url: HERO_BALI },
+  { label: 'Tokyo', url: HERO_TOKYO },
+];
 
 const CreateTrip = () => {
   const navigate = useNavigate();
@@ -15,14 +23,14 @@ const CreateTrip = () => {
 
   const [error, setError] = useState(null);
   const [dateError, setDateError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const handleDateChange = (start, end) => {
     setStartDate(start);
     setEndDate(end);
 
     if (start && end && new Date(end) < new Date(start)) {
-      setDateError('End date must be after start date.');
+      setDateError('End date must be after start date');
     } else {
       setDateError('');
     }
@@ -39,11 +47,11 @@ const CreateTrip = () => {
     }
 
     if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
-      setDateError('End date must be after start date.');
+      setDateError('End date must be after start date');
       return;
     }
 
-    setIsSubmitting(true);
+    setSaving(true);
 
     const payload = {
       name: name.trim(),
@@ -57,155 +65,178 @@ const CreateTrip = () => {
       const newTrip = await post('/trips', payload);
       const newId = newTrip.id || 'trip_eu_2026';
       navigate(`/trips/${newId}`);
-    } catch (err) {
-      // Mock fallback navigate
+    } catch {
       const mockId = 'trip_mock_' + Date.now();
       navigate(`/trips/${mockId}`);
     } finally {
-      setIsSubmitting(false);
+      setSaving(false);
     }
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      {/* Back Link */}
-      <div>
-        <Link
-          to="/trips"
-          className="inline-flex items-center space-x-1.5 text-xs font-semibold text-textMuted hover:text-primary transition-colors mb-2"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to My Trips</span>
-        </Link>
-      </div>
-
-      <ErrorBanner message={error?.message} code={error?.code} onClose={() => setError(null)} />
-
-      {/* Form Container: White card, max-w-[600px] mx-auto, p-8, rounded-card (16px), shadow-card */}
-      <div className="max-w-[600px] mx-auto bg-white rounded-card p-8 shadow-card border border-borderLight space-y-6">
+    <div className="page-enter min-h-screen bg-surface pt-24 pb-16 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-2xl mx-auto space-y-6">
+        {/* Back Link */}
         <div>
-          <h1 className="text-2xl font-bold text-textMain tracking-tight font-display">
+          <Link
+            to="/trips"
+            className="inline-flex items-center space-x-1.5 text-xs font-semibold text-text-muted hover:text-text-main transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back to My Trips</span>
+          </Link>
+        </div>
+
+        {/* Page Header */}
+        <div className="space-y-1">
+          <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-accent-light text-accent text-xs font-semibold">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>New Journey</span>
+          </div>
+          <h1 className="text-display-md text-2xl sm:text-3xl font-extrabold text-text-main">
             Plan a New Trip
           </h1>
-          <p className="text-xs text-textMuted mt-1 leading-relaxed">
-            Set up trip details before scheduling stops and activities
+          <p className="text-text-muted text-sm">
+            Set your dates, give it a name, and start assembling your multi-city adventure.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Trip Name */}
-          <div>
-            <label htmlFor="trip-name">
-              Trip Name <span className="text-accent">*</span>
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <MapPin className="w-4 h-4" />
-              </div>
+        <ErrorBanner message={error?.message} code={error?.code} onClose={() => setError(null)} />
+
+        {/* Main Form Card */}
+        <div className="gt-card p-6 sm:p-8 space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Trip Name */}
+            <div>
+              <label className="block text-xs font-bold text-text-main uppercase tracking-wider mb-2">
+                Trip Name <span className="text-accent">*</span>
+              </label>
               <input
-                id="trip-name"
                 type="text"
                 required
+                placeholder="e.g. Summer Euro Expedition 2026"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="block w-full pl-10 pr-3.5 py-2.5 border border-borderLight rounded-input text-sm bg-slate-50/50"
-                placeholder="e.g. Summer Euro Expedition 2026"
+                className="w-full px-4 py-3 rounded-btn border border-border-light bg-surface text-text-main placeholder:text-text-light text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-150"
               />
             </div>
-          </div>
 
-          {/* Date Fields: Side by side on desktop (grid-cols-2), stacked on mobile */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="start-date">Start Date</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Calendar className="w-4 h-4" />
-                </div>
+            {/* Date Fields */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-text-main uppercase tracking-wider mb-2">
+                  Start Date <span className="text-accent">*</span>
+                </label>
                 <input
-                  id="start-date"
                   type="date"
+                  required
                   value={startDate}
                   onChange={(e) => handleDateChange(e.target.value, endDate)}
-                  className="block w-full pl-10 pr-3.5 py-2.5 border border-borderLight rounded-input text-sm bg-slate-50/50"
+                  className="w-full px-4 py-3 rounded-btn border border-border-light bg-surface text-text-main text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-150"
                 />
               </div>
-            </div>
 
-            <div>
-              <label htmlFor="end-date">End Date</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Calendar className="w-4 h-4" />
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-text-main uppercase tracking-wider mb-2">
+                  End Date <span className="text-accent">*</span>
+                </label>
                 <input
-                  id="end-date"
                   type="date"
+                  required
                   value={endDate}
                   onChange={(e) => handleDateChange(startDate, e.target.value)}
-                  className="block w-full pl-10 pr-3.5 py-2.5 border border-borderLight rounded-input text-sm bg-slate-50/50"
+                  className="w-full px-4 py-3 rounded-btn border border-border-light bg-surface text-text-main text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-150"
                 />
+                {dateError && (
+                  <p className="text-danger text-xs mt-1.5 flex items-center gap-1 font-medium">
+                    <span>⚠</span> {dateError}
+                  </p>
+                )}
               </div>
-
-              {/* Immediate inline red validation directly below end date field */}
-              {dateError && (
-                <p className="text-red-500 text-[13px] font-semibold mt-1.5 animate-fade-in">
-                  {dateError}
-                </p>
-              )}
             </div>
-          </div>
 
-          {/* Description */}
-          <div>
-            <label htmlFor="trip-desc">Description / Objectives</label>
-            <div className="relative">
-              <div className="absolute top-3 left-3.5 text-slate-400">
-                <FileText className="w-4 h-4" />
-              </div>
+            {/* Description */}
+            <div>
+              <label className="block text-xs font-bold text-text-main uppercase tracking-wider mb-2">
+                Description <span className="text-text-light font-normal normal-case">(optional)</span>
+              </label>
               <textarea
-                id="trip-desc"
                 rows={3}
+                placeholder="What is the goal of this journey? High-level overview or notes..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="block w-full pl-10 pr-3.5 py-2.5 border border-borderLight rounded-input text-sm bg-slate-50/50"
-                placeholder="Must-visit landmarks, culinary goals, or budget notes..."
+                className="w-full px-4 py-3 rounded-btn border border-border-light bg-surface text-text-main placeholder:text-text-light text-sm resize-none focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-150"
               />
             </div>
-          </div>
 
-          {/* Cover Photo URL */}
-          <div>
-            <label htmlFor="cover-url">
-              Cover Photo Image URL <span className="text-textMuted font-normal">(optional)</span>
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <ImageIcon className="w-4 h-4" />
+            {/* Cover Photo with Live Preview & Presets */}
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-text-main uppercase tracking-wider">
+                Cover Photo <span className="text-text-light font-normal normal-case">(optional)</span>
+              </label>
+
+              <div className="flex flex-col sm:flex-row gap-4 items-start">
+                <div className="relative w-full sm:w-44 h-28 rounded-xl overflow-hidden bg-surface-raised border border-border-light flex-shrink-0 flex items-center justify-center">
+                  {coverPhotoUrl ? (
+                    <img
+                      src={coverPhotoUrl}
+                      alt="Cover preview"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.src = TRIP_CARD_FALLBACK;
+                      }}
+                    />
+                  ) : (
+                    <div className="text-center p-3 text-text-light space-y-1">
+                      <Image className="w-6 h-6 mx-auto text-text-light/60" />
+                      <span className="text-[11px] block">No image selected</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 w-full space-y-2">
+                  <input
+                    type="url"
+                    placeholder="Paste image URL (https://...)"
+                    value={coverPhotoUrl}
+                    onChange={(e) => setCoverPhotoUrl(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-btn border border-border-light bg-surface text-text-main placeholder:text-text-light text-xs sm:text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all duration-150"
+                  />
+                  
+                  {/* Preset photo pills */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[11px] text-text-muted font-medium mr-1">Presets:</span>
+                    {PRESET_COVERS.map((preset) => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => setCoverPhotoUrl(preset.url)}
+                        className={`text-[11px] font-medium px-2.5 py-1 rounded-full border transition-colors ${
+                          coverPhotoUrl === preset.url
+                            ? 'bg-accent text-white border-accent'
+                            : 'bg-surface border-border-light text-text-muted hover:border-accent/40 hover:text-text-main'
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <input
-                id="cover-url"
-                type="url"
-                value={coverPhotoUrl}
-                onChange={(e) => setCoverPhotoUrl(e.target.value)}
-                className="block w-full pl-10 pr-3.5 py-2.5 border border-borderLight rounded-input text-sm bg-slate-50/50"
-                placeholder="https://images.unsplash.com/photo-..."
-              />
             </div>
-          </div>
 
-          {/* Full-width coral save button at bottom (py-3) */}
-          <div className="pt-3">
-            <button
-              type="submit"
-              disabled={isSubmitting || Boolean(dateError)}
-              className="w-full inline-flex items-center justify-center space-x-2 py-3 px-4 bg-accent hover:bg-accent-hover text-white text-sm font-bold rounded-btn shadow-accent-glow hover:scale-[1.01] active:scale-[0.97] transition-all disabled:opacity-50"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>{isSubmitting ? 'Saving Trip...' : 'Save & Build Itinerary'}</span>
-            </button>
-          </div>
-        </form>
+            {/* Submit Button */}
+            <div className="pt-4 border-t border-border-light">
+              <button
+                type="submit"
+                disabled={saving || Boolean(dateError)}
+                className="w-full bg-accent hover:bg-accent-hover text-white font-bold py-3.5 rounded-btn shadow-btn-accent active:scale-[0.97] transition-all duration-150 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? 'Creating trip...' : 'Create Trip →'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

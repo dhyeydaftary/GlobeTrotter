@@ -1,111 +1,126 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Calendar, MapPin, Eye, Edit3, Trash2, Globe } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Calendar, MapPin, Trash2, Edit3, Eye } from 'lucide-react';
+import ConfirmDialog from './ConfirmDialog';
+import { TRIP_CARD_FALLBACK } from '../constants/images';
 
-const TripCard = ({ trip, onDelete }) => {
-  const { user } = useAuth();
-  const isOwner = user && (!trip.userId || trip.userId === user.id);
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return 'TBD';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+export default function TripCard({ trip, onDelete, isOwner = true }) {
+  const [deleting, setDeleting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await onDelete(trip.id);
+      setConfirmOpen(false);
+    } finally {
+      setDeleting(false);
+    }
   };
-
-  const coverImage =
-    trip.coverPhotoUrl ||
-    'https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&q=80&w=800';
 
   const stopCount = trip.stopCount ?? trip.stops?.length ?? 0;
 
   return (
-    <div className="bg-surface-card rounded-card shadow-card border border-borderLight overflow-hidden flex flex-col justify-between group card-hoverable">
-      {/* 1. Image Header (200px height) */}
-      <div className="h-[200px] w-full overflow-hidden relative bg-slate-100 shrink-0">
-        <img
-          src={coverImage}
-          alt={trip.name}
-          className="w-full h-[200px] object-cover group-hover:scale-105 transition-transform duration-300"
-          onError={(e) => {
-            e.target.src =
-              'https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&q=80&w=800';
-          }}
-        />
-        {trip.isPublic && (
-          <span className="absolute top-3 right-3 bg-success/90 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm backdrop-blur-sm flex items-center space-x-1">
-            <Globe className="w-3 h-3" />
-            <span>Public</span>
-          </span>
-        )}
-      </div>
-
-      {/* 2. Content Body */}
-      <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+    <>
+      <div
+        className="gt-card overflow-hidden cursor-pointer group flex flex-col justify-between"
+        onClick={() => navigate(`/trips/${trip.id}/view`)}
+      >
         <div>
-          {/* Title */}
-          <h3 className="font-semibold text-lg text-[#1A1A2E] font-display truncate">
-            {trip.name}
-          </h3>
+          {/* Cover Photo */}
+          <div className="relative h-48 overflow-hidden bg-surface-raised">
+            <img
+              src={trip.coverPhotoUrl || TRIP_CARD_FALLBACK}
+              alt={trip.name}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              onError={(e) => {
+                e.target.src = TRIP_CARD_FALLBACK;
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+            {trip.isPublic && (
+              <span className="absolute top-3 right-3 bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1.5 shadow-md">
+                <span className="w-1.5 h-1.5 rounded-full bg-white inline-block animate-pulse" />
+                Public
+              </span>
+            )}
+          </div>
 
-          {/* Description (2-line clamp) */}
-          <p className="text-xs text-[#6B7280] mt-1 line-clamp-2 leading-relaxed min-h-[2.25rem]">
-            {trip.description || 'Multi-city travel itinerary with scheduled daily activities and budget tracking.'}
-          </p>
+          {/* Body */}
+          <div className="p-5">
+            <h3 className="text-display-md font-bold text-text-main text-lg leading-snug mb-1 line-clamp-1 group-hover:text-accent transition-colors">
+              {trip.name}
+            </h3>
+            <p className="text-text-muted text-xs sm:text-sm line-clamp-2 mb-4 leading-relaxed min-h-[2.5rem]">
+              {trip.description || 'No description provided.'}
+            </p>
+
+            <div className="space-y-2 mb-4">
+              <div className="flex items-center gap-2 text-text-muted text-xs sm:text-sm">
+                <Calendar className="w-4 h-4 text-accent flex-shrink-0" />
+                <span>
+                  {formatDate(trip.startDate)} – {formatDate(trip.endDate)}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-text-muted text-xs sm:text-sm">
+                <MapPin className="w-4 h-4 text-accent flex-shrink-0" />
+                <span>
+                  {stopCount} {stopCount === 1 ? 'Stop' : 'Stops'}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* 3. Metadata Rows (Always Visible) */}
-        <div className="space-y-3 pt-3 border-t border-borderLight">
-          {/* Date row */}
-          <div className="flex items-center space-x-2 text-xs text-[#6B7280]">
-            <Calendar className="w-4 h-4 text-accent shrink-0" />
-            <span className="font-medium truncate">
-              {formatDate(trip.startDate)} – {formatDate(trip.endDate)}
-            </span>
-          </div>
-
-          {/* Stop count row */}
-          <div className="flex items-center space-x-2 text-xs text-[#6B7280]">
-            <MapPin className="w-4 h-4 text-primary shrink-0" />
-            <span className="font-medium">{stopCount} Stops</span>
-          </div>
-
-          {/* Action buttons row */}
-          <div className="pt-2 flex items-center justify-between gap-2">
-            <div className="flex items-center space-x-2">
-              <Link
-                to={`/trips/${trip.id}/view`}
-                className="inline-flex items-center space-x-1 text-xs font-semibold bg-primary/10 text-primary hover:bg-primary hover:text-white px-3 py-1.5 rounded-btn transition-colors"
-              >
-                <Eye className="w-3.5 h-3.5" />
-                <span>View</span>
-              </Link>
-
-              {isOwner && (
-                <Link
-                  to={`/trips/${trip.id}`}
-                  className="inline-flex items-center space-x-1 text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 px-3 py-1.5 rounded-btn transition-colors"
+        {/* Footer Actions */}
+        <div className="px-5 pb-5 pt-0">
+          <div className="border-t border-border-light pt-3.5 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => navigate(`/trips/${trip.id}/view`)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-text-main px-3 py-1.5 rounded-btn border border-border-light hover:border-accent hover:text-accent hover:bg-accent-light/50 active:scale-[0.97] transition-all"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>View</span>
+            </button>
+            {isOwner && (
+              <>
+                <button
+                  onClick={() => navigate(`/trips/${trip.id}`)}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-text-muted px-3 py-1.5 rounded-btn border border-border-light hover:border-border-strong hover:text-text-main active:scale-[0.97] transition-all"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                   <span>Edit</span>
-                </Link>
-              )}
-            </div>
-
-            {isOwner && onDelete && (
-              <button
-                onClick={() => onDelete(trip.id)}
-                className="inline-flex items-center text-xs font-semibold text-rose-600 hover:bg-rose-50 p-1.5 rounded-btn transition-colors"
-                title="Delete Trip"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+                </button>
+                <button
+                  onClick={() => setConfirmOpen(true)}
+                  disabled={deleting}
+                  className="ml-auto flex items-center gap-1 text-xs font-semibold text-danger px-2.5 py-1.5 rounded-btn border border-transparent hover:border-danger/20 hover:bg-danger/10 active:scale-[0.97] transition-all disabled:opacity-50"
+                  title="Delete Trip"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete</span>
+                </button>
+              </>
             )}
           </div>
         </div>
       </div>
-    </div>
-  );
-};
 
-export default TripCard;
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Delete this trip?"
+        message={`“${trip.name}” and its entire itinerary will be permanently removed. This cannot be undone.`}
+        confirmLabel="Delete trip"
+        loading={deleting}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={handleDelete}
+      />
+    </>
+  );
+}

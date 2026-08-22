@@ -1,16 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
-import { PlusCircle, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { PlusCircle, Sparkles } from 'lucide-react';
 import { get, del } from '../api/client';
 import { MOCK_TRIPS } from '../api/mocks';
 import TripCard from '../components/TripCard';
-import Skeleton from '../components/Skeleton';
 import ErrorBanner from '../components/ErrorBanner';
-import EmptyState from '../components/EmptyState';
 
 const MyTrips = () => {
+  const navigate = useNavigate();
   const [trips, setTrips] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -41,89 +39,75 @@ const MyTrips = () => {
   }, [fetchTrips]);
 
   const handleDelete = async (tripId) => {
-    const confirmDelete = window.confirm(
-      'Are you sure you want to delete this trip? This action cannot be undone.'
-    );
-
-    if (!confirmDelete) return;
-
     try {
       await del(`/trips/${tripId}`);
     } catch {}
     setTrips((prev) => prev.filter((t) => t.id !== tripId));
   };
 
-  const filteredTrips = trips.filter((t) =>
-    t.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Page Title & Actions */}
+    <div className="page-enter max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pt-24 pb-16 space-y-8">
+      {/* Header row */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-textMain tracking-tight font-display">
+          <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-accent-light text-accent text-xs font-semibold mb-2">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Trips Overview</span>
+          </div>
+          <h1 className="text-display-md text-2xl sm:text-3xl font-extrabold text-text-main">
             My Trips
           </h1>
-          <p className="text-xs text-textMuted mt-1">
-            Manage your past and upcoming multi-city travel itineraries
+          <p className="text-text-muted text-sm mt-1">
+            {trips.length} {trips.length === 1 ? 'adventure' : 'adventures'} planned
           </p>
         </div>
 
-        <Link
-          to="/trips/new"
-          className="inline-flex items-center justify-center space-x-2 bg-accent hover:bg-accent-hover text-white font-bold px-5 py-3 rounded-btn shadow-accent-glow hover:scale-[1.02] active:scale-[0.97] transition-all shrink-0"
+        <button
+          onClick={() => navigate('/trips/new')}
+          className="inline-flex items-center space-x-2 bg-accent hover:bg-accent-hover text-white font-bold px-5 py-3 rounded-btn shadow-btn-accent active:scale-[0.97] transition-all text-sm self-start sm:self-auto"
         >
-          <PlusCircle className="w-5 h-5" />
+          <PlusCircle className="w-4 h-4" />
           <span>Plan New Trip</span>
-        </Link>
+        </button>
       </div>
 
       <ErrorBanner message={error?.message} code={error?.code} onRetry={fetchTrips} onClose={() => setError(null)} />
 
-      {/* Search Filter */}
-      {trips.length > 0 && (
-        <div className="relative max-w-md">
-          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-            <Search className="w-4 h-4" />
-          </div>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search trips by name..."
-            className="block w-full pl-10 pr-4 py-2.5 bg-white border border-borderLight rounded-input text-sm focus:outline-none focus:ring-2 focus:ring-accent shadow-sm"
-          />
-        </div>
-      )}
-
-      {/* Grid: grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 */}
+      {/* Grid — reuse TripCard */}
       {loading ? (
-        <Skeleton type="card" count={3} />
-      ) : filteredTrips.length === 0 ? (
-        <EmptyState
-          title={searchQuery ? 'No matching trips found' : 'No trips created yet'}
-          description={
-            searchQuery
-              ? `No travel plans matched your search for "${searchQuery}".`
-              : 'Create your first multi-city trip itinerary to get started.'
-          }
-          action={
-            !searchQuery && (
-              <Link
-                to="/trips/new"
-                className="inline-flex items-center space-x-2 bg-accent hover:bg-accent-hover text-white font-bold text-xs px-5 py-2.5 rounded-btn shadow-md transition-all"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>Create Trip</span>
-              </Link>
-            )
-          }
-        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="gt-card overflow-hidden">
+              <div className="skeleton h-48 rounded-none" />
+              <div className="p-5 space-y-3">
+                <div className="skeleton h-5 w-3/4 rounded" />
+                <div className="skeleton h-4 w-full rounded" />
+                <div className="skeleton h-4 w-2/3 rounded" />
+                <div className="skeleton h-4 w-1/2 rounded mt-4" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : trips.length === 0 ? (
+        <div className="gt-card text-center py-16 px-6">
+          <div className="w-16 h-16 mx-auto mb-4 text-accent/60 bg-accent-light rounded-full flex items-center justify-center">
+            <Sparkles className="w-8 h-8 text-accent" />
+          </div>
+          <h3 className="text-display-md font-bold text-xl text-text-main mb-2">No trips yet</h3>
+          <p className="text-text-muted text-sm mb-6 max-w-sm mx-auto">
+            Start planning your first multi-city adventure.
+          </p>
+          <button
+            onClick={() => navigate('/trips/new')}
+            className="bg-accent hover:bg-accent-hover text-white font-bold px-6 py-3 rounded-btn shadow-btn-accent active:scale-[0.97] transition-all text-sm"
+          >
+            Plan New Trip
+          </button>
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredTrips.map((trip) => (
-            <TripCard key={trip.id} trip={trip} onDelete={handleDelete} />
+          {trips.map((trip) => (
+            <TripCard key={trip.id} trip={trip} onDelete={handleDelete} isOwner={true} />
           ))}
         </div>
       )}
